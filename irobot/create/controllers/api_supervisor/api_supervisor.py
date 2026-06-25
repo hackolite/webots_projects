@@ -8,11 +8,12 @@ Endpoints
 ─────────
 GET  /robots                  → state of all robots
 GET  /robots/{id}             → position, sensors, status
+GET  /robots/{id}/sensors     → robot internal sensor data only
 POST /robots/{id}/move        → { "speed_left": f, "speed_right": f }
 POST /robots/{id}/goto        → { "x": f, "z": f }  (autonomous navigation)
 POST /robots/{id}/stop        → immediate stop
 GET  /robots/{id}/camera      → JPEG image as base64 JSON
-GET  /robots/ceiling/camera   → ceiling camera image as base64 JSON
+GET  /god/camera              → top-down god-view camera image as base64 JSON
 POST /simulation/pause        → pause the simulation
 POST /simulation/resume       → resume the simulation
 GET  /simulation/time         → current simulated time
@@ -71,7 +72,7 @@ _paused: bool = False
 _pending_pause: bool = False
 _pending_resume: bool = False
 
-_ceiling_camera_file = os.path.join(tempfile.gettempdir(), "webots_ceiling_camera.jpg")
+_god_camera_file = os.path.join(tempfile.gettempdir(), "webots_god_camera.jpg")
 
 
 # ── Helper: extract yaw angle from Webots axis-angle rotation ────────────────
@@ -213,6 +214,23 @@ def stop_robot(rid):
     return jsonify({"ok": True})
 
 
+@app.get("/robots/<rid>/sensors")
+def robot_sensors(rid):
+    if rid not in ROBOT_DEFS:
+        return jsonify({"error": "robot not found"}), 404
+    sensors = {}
+    try:
+        sfp = os.path.join(tempfile.gettempdir(), f"webots_{rid}_state.json")
+        if os.path.exists(sfp):
+            with open(sfp) as fh:
+                sensors = json.load(fh)
+    except (OSError, json.JSONDecodeError):
+        pass
+    if not sensors:
+        return jsonify({"error": "no sensor data available yet"}), 503
+    return jsonify({"robot_id": rid, "sensors": sensors})
+
+
 @app.get("/robots/<rid>/camera")
 def robot_camera(rid):
     if rid not in ROBOT_DEFS:
@@ -225,13 +243,13 @@ def robot_camera(rid):
     return jsonify({"robot_id": rid, "format": "jpeg", "data": b64})
 
 
-@app.get("/robots/ceiling/camera")
-def ceiling_camera():
-    if not os.path.exists(_ceiling_camera_file):
+@app.get("/god/camera")
+def god_camera():
+    if not os.path.exists(_god_camera_file):
         return jsonify({"error": "no image available yet"}), 503
-    with open(_ceiling_camera_file, "rb") as fh:
+    with open(_god_camera_file, "rb") as fh:
         b64 = base64.b64encode(fh.read()).decode()
-    return jsonify({"source": "ceiling", "format": "jpeg", "data": b64})
+    return jsonify({"source": "god_camera", "format": "jpeg", "data": b64})
 
 
 @app.post("/simulation/pause")
@@ -275,12 +293,12 @@ def main():
         if node is None:
             print(f"[api_supervisor] WARNING: DEF '{ROBOT_DEFS[rid]}' not found for {rid}")
 
-    # ── Ceiling camera ───────────────────────────────────────────────────────
-    ceiling_cam = supervisor.getDevice("ceiling_camera")
-    if ceiling_cam:
-        ceiling_cam.enable(timestep)
+    # ── God camera (top-down view) ───────────────────────────────────────────
+    god_cam = supervisor.getDevice("god_camera")
+    if god_cam:
+        god_cam.enable(timestep)
     else:
-        print("[api_supervisor] WARNING: ceiling_camera device not found")
+        print("[api_supervisor] WARNING: god_camera device not found")
 
     # ── Start Flask in a background thread ───────────────────────────────────
     flask_thread = threading.Thread(target=_run_flask, daemon=True)
@@ -341,10 +359,10 @@ def main():
             cmd = json.dumps({"speed_left": sl, "speed_right": sr})
             node.getField("customData").setSFString(cmd)
 
-        # ── Save ceiling camera image periodically ───────────────────────────
-        if ceiling_cam and step_counter % CAMERA_SAVE_PERIOD == 0:
+        # ── Save god camera image periodically ───────────────────────────────
+        if god_cam and step_counter % CAMERA_SAVE_PERIOD == 0:
             try:
-                ceiling_cam.saveImage(_ceiling_camera_file, 90)
+                god_cam.saveImage(_god_camera_file, 90)
             except Exception:
                 pass
 
