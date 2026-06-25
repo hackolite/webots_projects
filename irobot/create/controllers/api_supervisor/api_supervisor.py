@@ -6,18 +6,21 @@ the robots in the Webots simulation.
 
 Endpoints
 ─────────
-GET  /robots                  → state of all robots
-GET  /robots/{id}             → position, sensors, status
-GET  /robots/{id}/sensors     → robot internal sensor data only
-POST /robots/{id}/move        → { "speed_left": f, "speed_right": f }
-POST /robots/{id}/goto        → { "x": f, "z": f }  (autonomous navigation)
-POST /robots/{id}/stop        → immediate stop
-GET  /robots/{id}/camera      → JPEG image as base64 JSON
-GET  /god/camera              → top-down god-view camera image as base64 JSON
-GET  /robots/ceiling/camera   → bedroom ceiling camera image as base64 JSON
-POST /simulation/pause        → pause the simulation
-POST /simulation/resume       → resume the simulation
-GET  /simulation/time         → current simulated time
+GET  /robots                         → state of all robots
+GET  /robots/{id}                    → position, sensors, status
+GET  /robots/{id}/sensors            → robot internal sensor data only
+POST /robots/{id}/move               → { "speed_left": f, "speed_right": f }
+POST /robots/{id}/goto               → { "x": f, "z": f }  (autonomous navigation)
+POST /robots/{id}/stop               → immediate stop
+GET  /robots/{id}/camera             → JPEG image as base64 JSON (snapshot)
+GET  /robots/{id}/camera/stream      → MJPEG live stream
+GET  /god/camera                     → top-down god-view camera image as base64 JSON (snapshot)
+GET  /god/camera/stream              → MJPEG live stream
+GET  /robots/ceiling/camera          → bedroom ceiling camera image as base64 JSON (snapshot)
+GET  /robots/ceiling/camera/stream   → MJPEG live stream
+POST /simulation/pause               → pause the simulation
+POST /simulation/resume              → resume the simulation
+GET  /simulation/time                → current simulated time
 
 Coordinate note: the world uses X/Y as the horizontal plane (Z is up).
 The API "z" parameter in /goto maps to the world Y axis, matching the
@@ -25,27 +28,31 @@ Webots VRML convention used in the original scene description.
 """
 
 import base64
+import io
 import json
 import math
 import os
 import tempfile
 import threading
+import time
 from copy import deepcopy
 
 from controller import Supervisor
 
 try:
-    from flask import Flask, jsonify, request
+    from flask import Flask, Response, jsonify, request
 except ImportError:
     import subprocess, sys
     subprocess.check_call([sys.executable, "-m", "pip", "install", "flask", "-q"])
-    from flask import Flask, jsonify, request
+    from flask import Flask, Response, jsonify, request
+
+from PIL import Image  # installed via requirements.txt
 
 # ── Constants ────────────────────────────────────────────────────────────────
 API_PORT = 5000
 MAX_SPEED = 8.0          # conservative max speed for goto navigation (m/s * gearing)
 GOTO_ARRIVAL_DIST = 0.15  # metres – consider target reached when within this distance
-CAMERA_SAVE_PERIOD = 5    # save ceiling camera every N timesteps
+JPEG_QUALITY = 75        # balance of speed and visual quality for streaming
 
 ROBOT_DEFS = {
     "ROBOT_1": "IROBOT_CREATE",   # DEF name in the .wbt file
@@ -79,8 +86,92 @@ _paused: bool = False
 _pending_pause: bool = False
 _pending_resume: bool = False
 
-_god_camera_file = os.path.join(tempfile.gettempdir(), "webots_god_camera.jpg")
-_ceiling_camera_file = os.path.join(tempfile.gettempdir(), "webots_ceiling_camera.jpg")
+# ── In-memory camera frame buffers (JPEG bytes) ──────────────────────────────
+# Each camera has its own Condition so streaming clients wake immediately
+# on a new frame without polling, and reads are always consistent.
+_god_cam_cond = threading.Condition()
+_god_frame: bytes = b""
+_god_frame_seq: int = 0
+
+_ceiling_cam_cond = threading.Condition()
+_ceiling_frame: bytes = b""
+_ceiling_frame_seq: int = 0
+
+_tmp = tempfile.gettempdir()
+
+
+# ── JPEG encoding helper ──────────────────────────────────────────────────────
+
+def _encode_jpeg(camera, quality: int = JPEG_QUALITY) -> bytes:
+    """Encode a Webots camera frame to JPEG bytes entirely in memory.
+
+    Uses PIL to convert the raw BGRA pixel data returned by ``getImage()``
+    to a JPEG without any disk I/O, which is significantly faster than
+    ``Camera.saveImage()``.
+    """
+    raw = camera.getImage()   # BGRA bytes, width × height × 4
+    img = Image.frombytes(
+        "RGBA",
+        (camera.getWidth(), camera.getHeight()),
+        raw,
+        "raw",
+        "BGRA",
+    )
+    buf = io.BytesIO()
+    img.convert("RGB").save(buf, format="JPEG", quality=quality, optimize=False)
+    return buf.getvalue()
+
+
+# ── MJPEG streaming generators ────────────────────────────────────────────────
+
+def _supervisor_camera_stream(cond, get_frame, get_seq):
+    """Generator for supervisor-side cameras (god, ceiling).
+
+    Blocks efficiently on ``cond`` until the main loop publishes a new frame,
+    then immediately yields the MJPEG chunk.  Multiple simultaneous clients
+    are each tracked by their own ``last_seq`` so no frame is ever missed.
+    """
+    last_seq = -1
+    while True:
+        with cond:
+            cond.wait_for(lambda: get_seq() != last_seq, timeout=1.0)
+            seq = get_seq()
+            frame = get_frame()
+        if seq != last_seq:
+            last_seq = seq
+            if frame:
+                yield (
+                    b"--frame\r\n"
+                    b"Content-Type: image/jpeg\r\n\r\n"
+                    + frame
+                    + b"\r\n"
+                )
+
+
+def _robot_camera_stream(rid: str):
+    """Generator for robot cameras (written to /tmp by robot_controller.py).
+
+    Detects new frames via mtime so duplicate file reads are avoided.
+    """
+    path = os.path.join(_tmp, f"webots_{rid}_camera.jpg")
+    last_mtime = 0.0
+    while True:
+        try:
+            mtime = os.path.getmtime(path)
+            if mtime != last_mtime:
+                last_mtime = mtime
+                with open(path, "rb") as fh:
+                    frame = fh.read()
+                if frame:
+                    yield (
+                        b"--frame\r\n"
+                        b"Content-Type: image/jpeg\r\n\r\n"
+                        + frame
+                        + b"\r\n"
+                    )
+        except OSError:
+            pass
+        time.sleep(0.016)   # ~60 Hz poll – never misses a 30 fps robot frame
 
 
 # ── Helper: extract yaw angle from Webots axis-angle rotation ────────────────
@@ -281,7 +372,7 @@ def robot_sensors(rid):
 def robot_camera(rid):
     if rid not in ROBOT_DEFS:
         return jsonify({"error": "robot not found"}), 404
-    img_path = os.path.join(tempfile.gettempdir(), f"webots_{rid}_camera.jpg")
+    img_path = os.path.join(_tmp, f"webots_{rid}_camera.jpg")
     if not os.path.exists(img_path):
         return jsonify({"error": "no image available yet"}), 503
     with open(img_path, "rb") as fh:
@@ -289,22 +380,61 @@ def robot_camera(rid):
     return jsonify({"robot_id": rid, "format": "jpeg", "data": b64})
 
 
+@app.get("/robots/<rid>/camera/stream")
+def robot_camera_mjpeg(rid):
+    """MJPEG live stream for a robot's front camera."""
+    if rid not in ROBOT_DEFS:
+        return jsonify({"error": "robot not found"}), 404
+    return Response(
+        _robot_camera_stream(rid),
+        mimetype="multipart/x-mixed-replace; boundary=frame",
+    )
+
+
 @app.get("/god/camera")
 def god_camera():
-    if not os.path.exists(_god_camera_file):
+    with _god_cam_cond:
+        frame = _god_frame
+    if not frame:
         return jsonify({"error": "no image available yet"}), 503
-    with open(_god_camera_file, "rb") as fh:
-        b64 = base64.b64encode(fh.read()).decode()
+    b64 = base64.b64encode(frame).decode()
     return jsonify({"source": "god_camera", "format": "jpeg", "data": b64})
+
+
+@app.get("/god/camera/stream")
+def god_camera_mjpeg():
+    """MJPEG live stream for the top-down god camera."""
+    return Response(
+        _supervisor_camera_stream(
+            _god_cam_cond,
+            lambda: _god_frame,
+            lambda: _god_frame_seq,
+        ),
+        mimetype="multipart/x-mixed-replace; boundary=frame",
+    )
 
 
 @app.get("/robots/ceiling/camera")
 def ceiling_camera():
-    if not os.path.exists(_ceiling_camera_file):
+    with _ceiling_cam_cond:
+        frame = _ceiling_frame
+    if not frame:
         return jsonify({"error": "no image available yet"}), 503
-    with open(_ceiling_camera_file, "rb") as fh:
-        b64 = base64.b64encode(fh.read()).decode()
+    b64 = base64.b64encode(frame).decode()
     return jsonify({"source": "ceiling_camera", "format": "jpeg", "data": b64})
+
+
+@app.get("/robots/ceiling/camera/stream")
+def ceiling_camera_mjpeg():
+    """MJPEG live stream for the bedroom ceiling camera."""
+    return Response(
+        _supervisor_camera_stream(
+            _ceiling_cam_cond,
+            lambda: _ceiling_frame,
+            lambda: _ceiling_frame_seq,
+        ),
+        mimetype="multipart/x-mixed-replace; boundary=frame",
+    )
 
 
 @app.post("/simulation/pause")
@@ -338,6 +468,7 @@ def _run_flask():
 
 def main():
     global _sim_time, _paused, _pending_pause, _pending_resume
+    global _god_frame, _god_frame_seq, _ceiling_frame, _ceiling_frame_seq
 
     supervisor = Supervisor()
     timestep = int(supervisor.getBasicTimeStep())
@@ -375,8 +506,6 @@ def main():
     flask_thread = threading.Thread(target=_run_flask, daemon=True)
     flask_thread.start()
     print(f"[api_supervisor] REST API listening on http://0.0.0.0:{API_PORT}")
-
-    step_counter = 0
 
     while supervisor.step(timestep) != -1:
         # ── Handle pause / resume requests ──────────────────────────────────
@@ -430,21 +559,27 @@ def main():
             cmd = json.dumps({"speed_left": sl, "speed_right": sr})
             node.getField("customData").setSFString(cmd)
 
-        # ── Save god camera image periodically ───────────────────────────────
-        if god_cam and step_counter % CAMERA_SAVE_PERIOD == 0:
+        # ── Capture god camera frame into memory ─────────────────────────────
+        if god_cam:
             try:
-                god_cam.saveImage(_god_camera_file, 90)
-            except Exception:
-                pass
+                frame = _encode_jpeg(god_cam)
+                with _god_cam_cond:
+                    _god_frame = frame
+                    _god_frame_seq += 1
+                    _god_cam_cond.notify_all()
+            except Exception as e:
+                print(f"[api_supervisor] god_camera encoding error: {e}")
 
-        # ── Save ceiling camera image periodically ────────────────────────────
-        if ceiling_cam and step_counter % CAMERA_SAVE_PERIOD == 0:
+        # ── Capture ceiling camera frame into memory ──────────────────────────
+        if ceiling_cam:
             try:
-                ceiling_cam.saveImage(_ceiling_camera_file, 90)
-            except Exception:
-                pass
-
-        step_counter += 1
+                frame = _encode_jpeg(ceiling_cam)
+                with _ceiling_cam_cond:
+                    _ceiling_frame = frame
+                    _ceiling_frame_seq += 1
+                    _ceiling_cam_cond.notify_all()
+            except Exception as e:
+                print(f"[api_supervisor] ceiling_camera encoding error: {e}")
 
 
 if __name__ == "__main__":
