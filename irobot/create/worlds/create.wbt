@@ -2079,9 +2079,9 @@ Robot {
       height 512
     }
     Camera {
-      translation -7.7 -10.89 2.3
+      translation -1.94 -3.3 2.3
       name "ceiling_camera"
-      fieldOfView 1.5
+      fieldOfView 1.57
       width 320
       height 320
     }

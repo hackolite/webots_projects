@@ -28,9 +28,24 @@ A **god camera** (`god_camera`, FOV ≈ 0.9 rad ≈ 52 °, 512 × 512 px) is mou
 high above the apartment at (−4.96, −6.5, 18), looking straight down from the
 sky for a full **2D top-down view** of the whole apartment.
 
-A **ceiling camera** (`ceiling_camera`, FOV ≈ 86 °, 320 × 320 px) is mounted at
-(−7.7, −10.89, 2.3) above a bedroom, looking straight down for a close-up view
-of that area.
+A **ceiling camera** (`ceiling_camera`, FOV ≈ 90 °, 320 × 320 px) is mounted at
+(−1.94, −3.3, 2.3) above the **kitchen**, looking straight down for a close-up
+top-down view of the kitchen area.
+
+## Webots camera overlays
+
+When the simulation opens, four camera overlay windows are automatically
+displayed inside the Webots 3D view, each labelled with its device name:
+
+| Overlay label | Source | Resolution |
+|---------------|--------|------------|
+| `front_camera` (ROBOT_1) | ROBOT_1 front-facing camera | 320 × 240 px |
+| `front_camera` (ROBOT_2) | ROBOT_2 front-facing camera | 320 × 240 px |
+| `god_camera` | Top-down view of the whole apartment | 512 × 512 px |
+| `ceiling_camera` | Kitchen ceiling top-down view | 320 × 320 px |
+
+All overlays can be dragged and resized inside Webots via the **View → Rendering
+devices** menu. The `.wbproj` file stores the saved positions.
 
 ## Running
 
@@ -67,7 +82,7 @@ GET  /robots/{id}/camera         Robot's front camera as base64 JPEG
                                  Response: {"robot_id": ..., "format": "jpeg", "data": "<b64>"}
 GET  /god/camera                 Top-down god-view camera as base64 JPEG (512×512, whole apartment)
                                  Response: {"source": "god_camera", "format": "jpeg", "data": "<b64>"}
-GET  /robots/ceiling/camera      Bedroom ceiling camera as base64 JPEG (320×320)
+GET  /robots/ceiling/camera      Kitchen ceiling camera as base64 JPEG (320×320)
                                  Response: {"source": "ceiling_camera", "format": "jpeg", "data": "<b64>"}
 ```
 
@@ -109,7 +124,7 @@ curl -X POST http://localhost:5000/robots/ROBOT_1/stop
 curl http://localhost:5000/god/camera | python3 -c \
   "import sys,json,base64; d=json.load(sys.stdin); open('god_view.jpg','wb').write(base64.b64decode(d['data']))"
 
-# Get the bedroom ceiling camera image
+# Get the kitchen ceiling camera image
 curl http://localhost:5000/robots/ceiling/camera | python3 -c \
   "import sys,json,base64; d=json.load(sys.stdin); open('ceiling.jpg','wb').write(base64.b64decode(d['data']))"
 
