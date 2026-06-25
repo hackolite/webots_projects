@@ -8,15 +8,37 @@ Command format (JSON in customData):
   {"speed_left": <float>, "speed_right": <float>}
 """
 
+import io
 import json
 import os
-import sys
 import tempfile
 
 from controller import Robot
 
+try:
+    from PIL import Image
+except ImportError:
+    import subprocess, sys
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "Pillow", "-q"])
+    from PIL import Image  # noqa: E402
+
 MAX_SPEED = 16.0
-CAMERA_SAVE_PERIOD = 5   # save camera every N timesteps to reduce I/O
+JPEG_QUALITY = 75   # quality / speed trade-off for streaming
+
+
+def _encode_jpeg(camera, quality: int = JPEG_QUALITY) -> bytes:
+    """Encode the camera's current frame to JPEG bytes in memory (no disk I/O)."""
+    raw = camera.getImage()   # BGRA bytes
+    img = Image.frombytes(
+        "RGBA",
+        (camera.getWidth(), camera.getHeight()),
+        raw,
+        "raw",
+        "BGRA",
+    )
+    buf = io.BytesIO()
+    img.convert("RGB").save(buf, format="JPEG", quality=quality, optimize=False)
+    return buf.getvalue()
 
 
 def main():
@@ -61,8 +83,6 @@ def main():
     state_file = os.path.join(_tmp, f"webots_{robot_name}_state.json")
     camera_file = os.path.join(_tmp, f"webots_{robot_name}_camera.jpg")
 
-    step_counter = 0
-
     while robot.step(timestep) != -1:
         # ── Apply speed command from supervisor ──────────────────────────────
         custom_data = robot.getCustomData()
@@ -94,14 +114,17 @@ def main():
         except OSError:
             pass
 
-        # ── Save camera image periodically ───────────────────────────────────
-        if step_counter % CAMERA_SAVE_PERIOD == 0:
-            try:
-                camera.saveImage(camera_file, 90)
-            except Exception:
-                pass
-
-        step_counter += 1
+        # ── Write camera frame to file every step ────────────────────────────
+        try:
+            jpeg_bytes = _encode_jpeg(camera)
+            tmp_path = camera_file + ".tmp"
+            with open(tmp_path, "wb") as f:
+                f.write(jpeg_bytes)
+            os.replace(tmp_path, camera_file)
+        except OSError as e:
+            print(f"[robot_controller] camera I/O error: {e}")
+        except Exception as e:
+            print(f"[robot_controller] camera encoding error: {e}")
 
 
 if __name__ == "__main__":
