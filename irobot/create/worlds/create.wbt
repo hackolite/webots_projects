@@ -2089,7 +2089,7 @@ DEF ROBOT_2 Create {
 Robot {
   children [
     Camera {
-      translation -4.96 -6.5 25
+      translation -4.62 -4.14 25
       rotation 0 0 1 0
       name "god_camera"
       fieldOfView 1.2
