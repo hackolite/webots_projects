@@ -24,9 +24,10 @@ observe the whole flat from the sky.
 Each robot carries a **wide-field front camera** (FOV ≈ 120 °, 320 × 240 px)
 oriented to look **forward** (along the robot's +X axis).
 
-A **god camera** (`god_camera`, FOV ≈ 0.9 rad ≈ 52 °, 512 × 512 px) is mounted
-high above the apartment at (−4.96, −6.5, 18), looking straight down from the
-sky for a full **2D top-down view** of the whole apartment.
+A **god camera** (`god_camera`, FOV ≈ 1.2 rad ≈ 69 °, 512 × 512 px) is mounted
+high above the apartment at (−4.96, −6.5, 25), looking straight down from the
+sky for a full **2D top-down view** of the whole apartment (covers ≈ 33 m per
+side, more than enough for the full flat).
 
 A **ceiling camera** (`ceiling_camera`, FOV ≈ 90 °, 320 × 320 px) is mounted at
 (−1.94, −3.3, 2.3) above the **kitchen**, looking straight down for a close-up
