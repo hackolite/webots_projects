@@ -141,9 +141,9 @@ DEF ROBOT_2 Create {
 Robot {
   children [
     Camera {
-      translation 0 0 10
+      translation 0 0 2.4
       name "god_camera"
-      fieldOfView 1.1
+      fieldOfView 2.3
       width 512
       height 512
     }
