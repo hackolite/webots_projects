@@ -258,11 +258,23 @@ def _apply_robot_color(node, color):
 # ── Flask application ────────────────────────────────────────────────────────
 
 app = Flask(__name__)
+# Merge consecutive slashes so clients that send //robots/… still match routes
+app.url_map.merge_slashes = True
 
 # silence Flask startup banner in Webots console
 import logging
 log = logging.getLogger("werkzeug")
 log.setLevel(logging.ERROR)
+
+# Numeric alias map so clients can use "1" / "2" in place of "ROBOT_1" / "ROBOT_2".
+# ROBOT_DEFS is a static constant; Python 3.7+ dicts preserve insertion order,
+# so "1" always maps to the first entry and "2" to the second.
+_NUMERIC_ID_MAP: dict[str, str] = {str(i + 1): rid for i, rid in enumerate(ROBOT_DEFS)}
+
+
+def _resolve_rid(rid: str) -> str:
+    """Return the canonical robot ID for *rid*, accepting numeric aliases."""
+    return _NUMERIC_ID_MAP.get(rid, rid)
 
 
 def _robot_public_state(rid):
@@ -302,6 +314,7 @@ def get_robots():
 
 @app.get("/robots/<rid>")
 def get_robot(rid):
+    rid = _resolve_rid(rid)
     if rid not in ROBOT_DEFS:
         return jsonify({"error": "robot not found"}), 404
     return jsonify(_robot_public_state(rid))
@@ -309,6 +322,7 @@ def get_robot(rid):
 
 @app.post("/robots/<rid>/move")
 def move_robot(rid):
+    rid = _resolve_rid(rid)
     if rid not in ROBOT_DEFS:
         return jsonify({"error": "robot not found"}), 404
     data = request.get_json(force=True, silent=True) or {}
@@ -325,6 +339,7 @@ def move_robot(rid):
 @app.post("/robots/<rid>/goto")
 def goto_robot(rid):
     """Navigate autonomously to {x, z} where z maps to world Y axis."""
+    rid = _resolve_rid(rid)
     if rid not in ROBOT_DEFS:
         return jsonify({"error": "robot not found"}), 404
     data = request.get_json(force=True, silent=True) or {}
@@ -341,6 +356,7 @@ def goto_robot(rid):
 
 @app.post("/robots/<rid>/stop")
 def stop_robot(rid):
+    rid = _resolve_rid(rid)
     if rid not in ROBOT_DEFS:
         return jsonify({"error": "robot not found"}), 404
     with _lock:
@@ -353,6 +369,7 @@ def stop_robot(rid):
 
 @app.get("/robots/<rid>/sensors")
 def robot_sensors(rid):
+    rid = _resolve_rid(rid)
     if rid not in ROBOT_DEFS:
         return jsonify({"error": "robot not found"}), 404
     sensors = {}
@@ -370,6 +387,7 @@ def robot_sensors(rid):
 
 @app.get("/robots/<rid>/camera")
 def robot_camera(rid):
+    rid = _resolve_rid(rid)
     if rid not in ROBOT_DEFS:
         return jsonify({"error": "robot not found"}), 404
     img_path = os.path.join(_tmp, f"webots_{rid}_camera.jpg")
@@ -383,6 +401,7 @@ def robot_camera(rid):
 @app.get("/robots/<rid>/camera/stream")
 def robot_camera_mjpeg(rid):
     """MJPEG live stream for a robot's front camera."""
+    rid = _resolve_rid(rid)
     if rid not in ROBOT_DEFS:
         return jsonify({"error": "robot not found"}), 404
     return Response(
