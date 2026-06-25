@@ -11,6 +11,7 @@ Command format (JSON in customData):
 import json
 import os
 import sys
+import tempfile
 
 from controller import Robot
 
@@ -56,8 +57,9 @@ def main():
     camera.enable(timestep)
 
     # ── Temp file paths ─────────────────────────────────────────────────────
-    state_file = f"/tmp/webots_{robot_name}_state.json"
-    camera_file = f"/tmp/webots_{robot_name}_camera.jpg"
+    _tmp = tempfile.gettempdir()
+    state_file = os.path.join(_tmp, f"webots_{robot_name}_state.json")
+    camera_file = os.path.join(_tmp, f"webots_{robot_name}_camera.jpg")
 
     step_counter = 0
 

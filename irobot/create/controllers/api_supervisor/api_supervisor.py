@@ -26,6 +26,7 @@ import base64
 import json
 import math
 import os
+import tempfile
 import threading
 from copy import deepcopy
 
@@ -70,7 +71,7 @@ _paused: bool = False
 _pending_pause: bool = False
 _pending_resume: bool = False
 
-_ceiling_camera_file = "/tmp/webots_ceiling_camera.jpg"
+_ceiling_camera_file = os.path.join(tempfile.gettempdir(), "webots_ceiling_camera.jpg")
 
 
 # ── Helper: extract yaw angle from Webots axis-angle rotation ────────────────
@@ -132,7 +133,7 @@ def _robot_public_state(rid):
         r = deepcopy(_robots[rid])
     sensors = {}
     try:
-        sfp = f"/tmp/webots_{rid}_state.json"
+        sfp = os.path.join(tempfile.gettempdir(), f"webots_{rid}_state.json")
         if os.path.exists(sfp):
             with open(sfp) as fh:
                 sensors = json.load(fh)
@@ -216,7 +217,7 @@ def stop_robot(rid):
 def robot_camera(rid):
     if rid not in ROBOT_DEFS:
         return jsonify({"error": "robot not found"}), 404
-    img_path = f"/tmp/webots_{rid}_camera.jpg"
+    img_path = os.path.join(tempfile.gettempdir(), f"webots_{rid}_camera.jpg")
     if not os.path.exists(img_path):
         return jsonify({"error": "no image available yet"}), 503
     with open(img_path, "rb") as fh:
