@@ -2,10 +2,12 @@
 
 ## World layout
 
-| Room | X range | Y range | Contents |
-|------|---------|---------|---------|
-| Living room | −5 → −1.65 | −5 → 5 | Table, chair, armchair, virtual wall |
-| Bedroom | −1.65 → 5 | −5 → 5 | Bed, second table |
+The world uses the official Webots **complete apartment**
+(`complete_apartment.wbt`): a fully furnished flat with two bedrooms, a
+living room, a kitchen, a bathroom, a restroom, stairs and a balcony. The
+apartment floor is centred around **(−4.96, −6.5)** and spans roughly
+X ∈ [−11, 1.5], Y ∈ [−13, 0]. The roof is omitted so the god camera can
+observe the whole flat from the sky.
 
 > **Coordinate convention** – this world uses **Z-up**: X and Y are the
 > horizontal plane, Z is altitude.  The API `/goto` endpoint accepts `x` and
@@ -16,19 +18,19 @@
 
 | ID | DEF name | Starting position | Room |
 |----|----------|-------------------|------|
-| `ROBOT_1` | `IROBOT_CREATE` | (−3.69, 0.02) | Living room |
-| `ROBOT_2` | `ROBOT_2` | (2.5, −2.5) | Bedroom |
+| `ROBOT_1` | `IROBOT_CREATE` | (−4.5, −3.0) | Living room |
+| `ROBOT_2` | `ROBOT_2` | (−5.0, −5.5) | Living room |
 
 Each robot carries a **wide-field front camera** (FOV ≈ 120 °, 320 × 240 px)
 oriented to look **forward** (along the robot's +X axis).
 
-A **god camera** (`god_camera`, FOV ≈ 74 °, 512 × 512 px) is mounted at
-(0, 0, 12) – centred above the entire arena – looking straight down for a
-full top-down view of both rooms.
+A **god camera** (`god_camera`, 512 × 512 px) is mounted high above the
+apartment at (−4.96, −6.5, 18), looking straight down from the sky for a
+full **2D top-down view** of the whole apartment.
 
 A **ceiling camera** (`ceiling_camera`, FOV ≈ 86 °, 320 × 320 px) is mounted at
-(2.5, 1.5, 2.35) in the bedroom, looking straight down for a close-up view of
-that area.
+(−7.7, −10.89, 2.3) above a bedroom, looking straight down for a close-up view
+of that area.
 
 ## Running
 
@@ -63,7 +65,7 @@ POST /robots/{id}/goto           Autonomous navigation to a point
 POST /robots/{id}/stop           Immediate stop
 GET  /robots/{id}/camera         Robot's front camera as base64 JPEG
                                  Response: {"robot_id": ..., "format": "jpeg", "data": "<b64>"}
-GET  /god/camera                 Top-down god-view camera as base64 JPEG (512×512, full arena)
+GET  /god/camera                 Top-down god-view camera as base64 JPEG (512×512, whole apartment)
                                  Response: {"source": "god_camera", "format": "jpeg", "data": "<b64>"}
 GET  /robots/ceiling/camera      Bedroom ceiling camera as base64 JPEG (320×320)
                                  Response: {"source": "ceiling_camera", "format": "jpeg", "data": "<b64>"}

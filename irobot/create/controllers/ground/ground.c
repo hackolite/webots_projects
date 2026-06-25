@@ -30,9 +30,14 @@
 #define Y 1
 #define Z 2
 
-// size of the ground
-#define GROUND_X 9.9
-#define GROUND_Y 9.9
+// size of the ground display plane (matches the GROUND robot's Plane in create.wbt)
+#define GROUND_X 13.0
+#define GROUND_Y 13.0
+
+// world position of the centre of the ground display plane
+// (matches the GROUND robot translation in create.wbt)
+#define CENTER_X -4.96
+#define CENTER_Y -6.5
 
 // main function
 int main() {
@@ -63,8 +68,8 @@ int main() {
     const double *translation = wb_supervisor_field_get_sf_vec3f(translationField);
 
     // display the robot position
-    wb_display_fill_oval(display, width * (translation[X] + GROUND_X / 2) / GROUND_X,
-                         height * (-translation[Y] + GROUND_Y / 2) / GROUND_Y, 7, 7);
+    wb_display_fill_oval(display, width * (translation[X] - CENTER_X + GROUND_X / 2) / GROUND_X,
+                         height * (-(translation[Y] - CENTER_Y) + GROUND_Y / 2) / GROUND_Y, 7, 7);
   }
 
   wb_robot_cleanup();
