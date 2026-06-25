@@ -104,7 +104,7 @@ TexturedBackground {
   texture "empty_office"
   skybox FALSE
   skyColor [
-    0.2 0.2 0.2
+    1 1 1
   ]
 }
 DEF FLOOR Solid {
