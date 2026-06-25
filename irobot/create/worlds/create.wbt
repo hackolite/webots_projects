@@ -109,6 +109,48 @@ CreateWall {
 }
 DEF IROBOT_CREATE Create {
   translation -3.69248 0.0193578 0.0899546
+  name "ROBOT_1"
+  controller "robot_controller"
+  bodySlot [
+    Camera {
+      translation 0.15 0 0.06
+      rotation 0 1 0 1.5708
+      name "front_camera"
+      fieldOfView 2.094
+      width 320
+      height 240
+    }
+  ]
+}
+DEF ROBOT_2 Create {
+  translation 2.5 -2.5 0.044
+  rotation 0 0 1 1.5708
+  name "ROBOT_2"
+  controller "robot_controller"
+  bodySlot [
+    Camera {
+      translation 0.15 0 0.06
+      rotation 0 1 0 1.5708
+      name "front_camera"
+      fieldOfView 2.094
+      width 320
+      height 240
+    }
+  ]
+}
+Robot {
+  translation 2.5 1.5 2.35
+  children [
+    Camera {
+      name "ceiling_camera"
+      fieldOfView 1.5
+      width 320
+      height 320
+    }
+  ]
+  name "API_SUPERVISOR"
+  controller "api_supervisor"
+  supervisor TRUE
 }
 Robot {
   children [
