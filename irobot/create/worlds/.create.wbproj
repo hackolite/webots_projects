@@ -7,4 +7,4 @@ centralWidgetVisible: 1
 orthographicViewHeight: 1
 textFiles: 1 "controllers/ground/ground.c" "controllers/create_avoid_obstacles/create_avoid_obstacles.c"
 consoles: Console:All:All
-renderingDevicePerspectives: GROUND:ground_display;0;0.554688;0;0 ROBOT_1:front_camera;0;0;0.72;1 ROBOT_2:front_camera;0;0.27;0.72;1 API_SUPERVISOR:god_camera;0;0.54;0;1 API_SUPERVISOR:ceiling_camera;0;0.54;0.55;1
+renderingDevicePerspectives: GROUND:ground_display;0;0.554688;0;0 ROBOT_1:front_camera;0;0;0.72;1 ROBOT_2:front_camera;0;0.27;0.72;1 API_SUPERVISOR:god_camera;0;0;0.27;1 API_SUPERVISOR:ceiling_camera;0;0.54;0.55;1
