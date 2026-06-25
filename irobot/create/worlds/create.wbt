@@ -2095,6 +2095,7 @@ Robot {
       fieldOfView 1.2
       width 512
       height 512
+      projection "orthographic"
     }
     Camera {
       translation -1.94 -3.3 2.3
