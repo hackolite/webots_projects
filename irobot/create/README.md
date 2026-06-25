@@ -26,6 +26,10 @@ A **god camera** (`god_camera`, FOV ≈ 74 °, 512 × 512 px) is mounted at
 (0, 0, 12) – centred above the entire arena – looking straight down for a
 full top-down view of both rooms.
 
+A **ceiling camera** (`ceiling_camera`, FOV ≈ 86 °, 320 × 320 px) is mounted at
+(2.5, 1.5, 2.35) in the bedroom, looking straight down for a close-up view of
+that area.
+
 ## Running
 
 1. Install Webots R2025a.
@@ -61,6 +65,8 @@ GET  /robots/{id}/camera         Robot's front camera as base64 JPEG
                                  Response: {"robot_id": ..., "format": "jpeg", "data": "<b64>"}
 GET  /god/camera                 Top-down god-view camera as base64 JPEG (512×512, full arena)
                                  Response: {"source": "god_camera", "format": "jpeg", "data": "<b64>"}
+GET  /robots/ceiling/camera      Bedroom ceiling camera as base64 JPEG (320×320)
+                                 Response: {"source": "ceiling_camera", "format": "jpeg", "data": "<b64>"}
 ```
 
 ### Simulation
@@ -101,6 +107,10 @@ curl -X POST http://localhost:5000/robots/ROBOT_1/stop
 curl http://localhost:5000/god/camera | python3 -c \
   "import sys,json,base64; d=json.load(sys.stdin); open('god_view.jpg','wb').write(base64.b64decode(d['data']))"
 
+# Get the bedroom ceiling camera image
+curl http://localhost:5000/robots/ceiling/camera | python3 -c \
+  "import sys,json,base64; d=json.load(sys.stdin); open('ceiling.jpg','wb').write(base64.b64decode(d['data']))"
+
 # Get a robot's front camera image
 curl http://localhost:5000/robots/ROBOT_1/camera | python3 -c \
   "import sys,json,base64; d=json.load(sys.stdin); open('robot1_cam.jpg','wb').write(base64.b64decode(d['data']))"
@@ -127,8 +137,9 @@ api_supervisor.py  (Webots supervisor, main loop + Flask server in thread)
       reads customData, drives motors, saves camera + state to /tmp
 ```
 
-Camera images are written to `/tmp/webots_<ID>_camera.jpg` and
-`/tmp/webots_god_camera.jpg` by the respective controllers.
+Camera images are written to `/tmp/webots_<ID>_camera.jpg`,
+`/tmp/webots_god_camera.jpg`, and `/tmp/webots_ceiling_camera.jpg`
+by the respective controllers.
 
 ### Robot sensor data (`/robots/{id}/sensors`)
 
