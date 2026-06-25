@@ -52,6 +52,12 @@ ROBOT_DEFS = {
     "ROBOT_2": "ROBOT_2",
 }
 
+# Fluorescent body colors for each robot (linear RGB 0–1)
+ROBOT_COLORS = {
+    "ROBOT_1": [0.0, 1.0, 0.0],   # fluorescent green
+    "ROBOT_2": [1.0, 0.45, 0.0],  # fluorescent orange
+}
+
 # ── Shared state (accessed by Flask thread + main loop) ─────────────────────
 _lock = threading.Lock()
 
@@ -118,6 +124,44 @@ def _compute_goto_speeds(pos, rot, target):
     sl = max(-MAX_SPEED, min(MAX_SPEED, sl))
     sr = max(-MAX_SPEED, min(MAX_SPEED, sr))
     return sl, sr
+
+
+# ── Robot appearance helpers ─────────────────────────────────────────────────
+
+def _apply_robot_color(node, color):
+    """Set the fluorescent body color of a Create robot via the Supervisor API.
+
+    Navigates the robot's child list to find the first Shape whose appearance
+    is a PBRAppearance, then overwrites *baseColor* and adds a matching
+    *emissiveColor* for a glowing fluorescent effect.  The texture map is
+    removed so the flat saturated color is fully visible.
+    """
+    children_field = node.getField("children")
+    if children_field is None:
+        return
+    count = children_field.getCount()
+    for i in range(count):
+        child = children_field.getMFNode(i)
+        if child.getTypeName() != "Shape":
+            continue
+        app_field = child.getField("appearance")
+        if app_field is None:
+            continue
+        app_node = app_field.getSFNode()
+        if app_node is None or app_node.getTypeName() != "PBRAppearance":
+            continue
+        base_color_field = app_node.getField("baseColor")
+        if base_color_field:
+            base_color_field.setSFColor(color)
+        # Remove the default texture so the flat colour is fully visible
+        base_color_map_field = app_node.getField("baseColorMap")
+        if base_color_map_field:
+            base_color_map_field.setSFNode(None)
+        # Add a subtle self-illumination for a fluorescent glow
+        emissive_field = app_node.getField("emissiveColor")
+        if emissive_field:
+            emissive_field.setSFColor([c * 0.35 for c in color])
+        break  # Only the first Shape carries the main body appearance
 
 
 # ── Flask application ────────────────────────────────────────────────────────
@@ -303,6 +347,15 @@ def main():
     for rid, node in nodes.items():
         if node is None:
             print(f"[api_supervisor] WARNING: DEF '{ROBOT_DEFS[rid]}' not found for {rid}")
+
+    # ── Apply fluorescent colors ─────────────────────────────────────────────
+    for rid, node in nodes.items():
+        if node is None:
+            continue
+        color = ROBOT_COLORS.get(rid)
+        if color:
+            _apply_robot_color(node, color)
+            print(f"[api_supervisor] Set color {color} on {rid}")
 
     # ── God camera (top-down view) ───────────────────────────────────────────
     god_cam = supervisor.getDevice("god_camera")
