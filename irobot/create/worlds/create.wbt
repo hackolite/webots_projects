@@ -96,7 +96,8 @@ WorldInfo {
 }
 Viewpoint {
   orientation 0 0 1 0
-  position -4.96 -6.5 22
+  position -4.62 -4.14 30
+  projection "orthographic"
   exposure 0.5
   ambientOcclusionRadius 1
 }
