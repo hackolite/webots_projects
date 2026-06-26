@@ -633,10 +633,12 @@ def main():
                 shm = _robot_shm.get(rid)
                 if shm is not None:
                     try:
-                        seq = struct.unpack_from("<I", shm.buf, 0)[0]
+                        # Read the 8-byte header as a single copy to minimise torn reads.
+                        header = bytes(shm.buf[0:_SHM_HEADER])
+                        seq = struct.unpack_from("<I", header, 0)[0]
                         if seq != _robot_shm_last_seq[rid]:
-                            length = struct.unpack_from("<I", shm.buf, 4)[0]
-                            if 0 < length <= _SHM_SIZE - _SHM_HEADER:
+                            length = struct.unpack_from("<I", header, 4)[0]
+                            if 0 < length < _SHM_SIZE - _SHM_HEADER:
                                 frame = bytes(shm.buf[_SHM_HEADER:_SHM_HEADER + length])
                                 _robot_shm_last_seq[rid] = seq
                                 with _robot_cam_cond[rid]:
