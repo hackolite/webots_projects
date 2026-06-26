@@ -18,6 +18,19 @@ from PIL import Image
 _SHM_HEADER = 8  # [seq:uint32][length:uint32]
 _SHM_SIZE = 512 * 1024 + _SHM_HEADER
 
+
+def _safe_replace(src, dst, retries=5, delay=0.02):
+    """os.replace with retry for Windows file-lock (WinError 5)."""
+    for attempt in range(retries):
+        try:
+            os.replace(src, dst)
+            return
+        except PermissionError:
+            if attempt < retries - 1:
+                time.sleep(delay)
+    # Last attempt – let the exception propagate if still locked
+    os.replace(src, dst)
+
 MAX_SPEED = 16.0
 
 
@@ -52,7 +65,7 @@ def _run_camera_encoder(cam_w, cam_h, shm_cam, robot_name, tmp, in_queue):
                 tmp_file = cam_file + ".tmp"
                 with open(tmp_file, "wb") as f:
                     f.write(jpeg)
-                os.replace(tmp_file, cam_file)
+                _safe_replace(tmp_file, cam_file)
 
         except Exception as e:
             print(f"[{robot_name}] camera encoding error: {e}")
@@ -240,7 +253,7 @@ def main():
         tmp_state_file = state_file + ".tmp"
         with open(tmp_state_file, "w") as f:
             json.dump(state, f)
-        os.replace(tmp_state_file, state_file)
+        _safe_replace(tmp_state_file, state_file)
 
         # CAMERA PIPELINE
         if camera and cam_queue:
