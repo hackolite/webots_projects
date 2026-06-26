@@ -714,6 +714,8 @@ def main():
 
             # ── Pull robot camera frames from shm (or file fallback) ─────────
             for rid in ROBOT_DEFS:
+                new_frame = None
+
                 shm = _robot_shm.get(rid)
                 if shm is not None:
                     try:
@@ -723,30 +725,32 @@ def main():
                         if seq != _robot_shm_last_seq[rid]:
                             length = struct.unpack_from("<I", header, 4)[0]
                             if 0 < length < _SHM_SIZE - _SHM_HEADER:
-                                frame = bytes(shm.buf[_SHM_HEADER:_SHM_HEADER + length])
+                                new_frame = bytes(shm.buf[_SHM_HEADER:_SHM_HEADER + length])
                                 _robot_shm_last_seq[rid] = seq
-                                with _robot_cam_cond[rid]:
-                                    _robot_frames[rid] = frame
-                                    _robot_frame_seq[rid] += 1
-                                    _robot_cam_cond[rid].notify_all()
                     except Exception as exc:
                         print(f"[api_supervisor] shm read error for {rid}: {exc}")
-                else:
-                    # Fallback: detect new file via mtime
+
+                # File fallback: always attempted when SHM produced no new frame this
+                # step.  Covers the case where the robot controller fell back to file
+                # writing because it could not attach to the shared-memory block in time.
+                if new_frame is None:
                     path = os.path.join(_tmp, f"webots_{rid}_camera.jpg")
                     try:
                         mtime = os.path.getmtime(path)
                         if mtime != _robot_file_mtime[rid]:
                             _robot_file_mtime[rid] = mtime
                             with open(path, "rb") as fh:
-                                frame = fh.read()
-                            if frame:
-                                with _robot_cam_cond[rid]:
-                                    _robot_frames[rid] = frame
-                                    _robot_frame_seq[rid] += 1
-                                    _robot_cam_cond[rid].notify_all()
+                                data = fh.read()
+                            if data:
+                                new_frame = data
                     except OSError:
                         pass
+
+                if new_frame is not None:
+                    with _robot_cam_cond[rid]:
+                        _robot_frames[rid] = new_frame
+                        _robot_frame_seq[rid] += 1
+                        _robot_cam_cond[rid].notify_all()
 
             # ── Capture god camera frame into memory ─────────────────────────
             # Only grab the raw bytes here (fast). The background encoder thread

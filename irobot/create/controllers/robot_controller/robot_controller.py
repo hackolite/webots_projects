@@ -153,7 +153,7 @@ def main():
     shm_cam = None
     if camera:
         shm_name = f"webots_{robot_name}_camera_shm"
-        for _ in range(20):
+        for _ in range(100):  # up to 10 s – supervisor may still be initialising
             try:
                 shm_cam = SharedMemory(name=shm_name, create=False)
                 break
@@ -267,10 +267,11 @@ def main():
         if camera and cam_queue:
             try:
                 raw = camera.getImage()
-                try:
-                    cam_queue.put_nowait(raw)
-                except queue.Full:
-                    pass
+                if raw:  # guard: getImage() returns None/empty before first render
+                    try:
+                        cam_queue.put_nowait(raw)
+                    except queue.Full:
+                        pass
             except:
                 pass
 
