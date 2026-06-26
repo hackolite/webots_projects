@@ -13,7 +13,15 @@ import threading
 import time
 from multiprocessing.shared_memory import SharedMemory
 from controller import Robot
-from PIL import Image
+
+try:
+    from PIL import Image
+except ImportError:
+    import subprocess
+    import sys
+    print("[robot_controller] Pillow not found – installing…")
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "Pillow", "-q"])
+    from PIL import Image
 
 _SHM_HEADER = 8  # [seq:uint32][length:uint32]
 _SHM_SIZE = 512 * 1024 + _SHM_HEADER
@@ -218,8 +226,8 @@ def main():
                 if "speed_left" in cmd and "speed_right" in cmd:
                     current_sl = max(-MAX_SPEED, min(MAX_SPEED, float(cmd["speed_left"])))
                     current_sr = max(-MAX_SPEED, min(MAX_SPEED, float(cmd["speed_right"])))
-            except:
-                pass
+            except Exception as e:
+                print(f"[{robot_name}] customData parse error: {e} (raw: {custom!r})")
 
         left_motor.setVelocity(current_sl)
         right_motor.setVelocity(current_sr)

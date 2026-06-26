@@ -2265,7 +2265,7 @@ DEF ROBOT_2 Create {
   rotation 0.1294086061793655 0.9689397865970564 0.21073467345447602 0.003059356986773044
   name "ROBOT_2"
   controller "robot_controller"
-  customData "{\"speed_left\": 5.0, \"speed_right\": 5.0}"
+  customData "{\"speed_left\": 0.0, \"speed_right\": 0.0}"
   bodySlot [
     DistanceSensor {
       translation 0 0 0.05
