@@ -13,7 +13,8 @@ from multiprocessing.shared_memory import SharedMemory
 from controller import Robot
 from PIL import Image
 
-_SHM_HEADER = 8   # header: [seq: uint32 LE][length: uint32 LE]
+_SHM_HEADER = 8                           # header: [seq: uint32 LE][length: uint32 LE]
+_SHM_SIZE = 512 * 1024 + _SHM_HEADER     # 512 KB payload + header
 
 
 MAX_SPEED = 16.0
