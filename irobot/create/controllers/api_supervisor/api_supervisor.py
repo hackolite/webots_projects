@@ -700,6 +700,11 @@ def main():
                         _robots[rid]["speed_left"] = sl
                         _robots[rid]["speed_right"] = sr
 
+                # Re-acquire the lock to read the freshest speed values.
+                # A /move request that was waiting on the first lock will have
+                # updated _robots[rid] by the time we reach this second lock,
+                # so its speed is applied in the current step instead of the next.
+                with _lock:
                     sl = _robots[rid]["speed_left"]
                     sr = _robots[rid]["speed_right"]
 
