@@ -180,12 +180,12 @@ def main():
                     "BGRA",
                 )
                 buf = io.BytesIO()
-                img.convert("RGB").save(buf, format="JPEG", quality=75, optimize=False)
+                img.convert("RGB").save(buf, format="JPEG", quality=75)
                 cam_file = os.path.join(tmp, f"webots_{robot_name}_camera.jpg")
                 with open(cam_file, "wb") as f:
                     f.write(buf.getvalue())
-            except Exception:
-                pass
+            except (OSError, ValueError, RuntimeError) as e:
+                print(f"[robot_controller] camera encoding error: {e}")
 
 
 if __name__ == "__main__":
