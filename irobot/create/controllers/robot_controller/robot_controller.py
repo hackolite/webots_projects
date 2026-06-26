@@ -17,7 +17,9 @@ from controller import Robot
 try:
     from PIL import Image
 except ImportError:
-    import subprocess, sys
+    import subprocess
+    import sys
+    print("[robot_controller] Pillow not found – installing…")
     subprocess.check_call([sys.executable, "-m", "pip", "install", "Pillow", "-q"])
     from PIL import Image
 
