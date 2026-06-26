@@ -1,6 +1,6 @@
 """
-iRobot Create controller
-Exports sensor data + applies speed commands from customData
+iRobot Create controller (PERSISTENT SPEED FIX)
+Exports sensor data + applies speed commands from customData continuously
 """
 
 import io
@@ -13,9 +13,8 @@ from multiprocessing.shared_memory import SharedMemory
 from controller import Robot
 from PIL import Image
 
-_SHM_HEADER = 8                           # header: [seq: uint32 LE][length: uint32 LE]
-_SHM_SIZE = 512 * 1024 + _SHM_HEADER     # 512 KB payload + header
-
+_SHM_HEADER = 8  # header: [seq: uint32 LE][length: uint32 LE]
+_SHM_SIZE = 512 * 1024 + _SHM_HEADER  # 512 KB payload + header
 
 MAX_SPEED = 16.0
 
@@ -45,6 +44,11 @@ def main():
     left_motor.setVelocity(0.0)
     right_motor.setVelocity(0.0)
 
+    # 📋 VARIABLES DE VITESSE PERSISTANTES
+    # Elles évitent que le robot s'arrête si customData devient vide ou s'efface
+    current_sl = 0.0
+    current_sr = 0.0
+
     # ─────────────────────────────
     # WHEEL ENCODERS
     # ─────────────────────────────
@@ -57,7 +61,7 @@ def main():
         right_enc.enable(timestep)
 
     # ─────────────────────────────
-    # BUMPERS (optionnels)
+    # BUMPERS
     # ─────────────────────────────
     bumper_left = safe_device(robot, "bumper_left")
     bumper_right = safe_device(robot, "bumper_right")
@@ -68,7 +72,7 @@ def main():
         bumper_right.enable(timestep)
 
     # ─────────────────────────────
-    # CLIFF SENSORS (optionnels)
+    # CLIFF SENSORS
     # ─────────────────────────────
     cliff_names = [
         "cliff_left",
@@ -94,13 +98,11 @@ def main():
     # ─────────────────────────────
     # SHARED MEMORY (camera IPC)
     # ─────────────────────────────
-    # The api_supervisor creates the block before robot controllers start.
-    # We attempt to attach, retrying briefly in case of startup ordering.
     shm_cam = None
     shm_seq = 0
     if camera:
         shm_name = f"webots_{robot_name}_camera_shm"
-        for _ in range(20):   # up to ~2 s
+        for _ in range(20):
             try:
                 shm_cam = SharedMemory(name=shm_name, create=False)
                 break
@@ -110,7 +112,7 @@ def main():
             print(f"[robot_controller:{robot_name}] shm not found, falling back to file")
 
     # ─────────────────────────────
-    # LI DAR (IMPORTANT)
+    # LIDAR
     # ─────────────────────────────
     lidar = safe_device(robot, "lidar")
     if lidar:
@@ -148,14 +150,18 @@ def main():
             try:
                 cmd = json.loads(custom)
 
-                sl = max(-MAX_SPEED, min(MAX_SPEED, float(cmd.get("speed_left", 0))))
-                sr = max(-MAX_SPEED, min(MAX_SPEED, float(cmd.get("speed_right", 0))))
-
-                left_motor.setVelocity(sl)
-                right_motor.setVelocity(sr)
-
+                # On ne met à jour les vitesses QUE si les clés sont présentes dans le JSON
+                if "speed_left" in cmd and "speed_right" in cmd:
+                    current_sl = max(-MAX_SPEED, min(MAX_SPEED, float(cmd.get("speed_left", 0))))
+                    current_sr = max(-MAX_SPEED, min(MAX_SPEED, float(cmd.get("speed_right", 0))))
             except:
+                # Si le JSON est mal formé ou temporairement vide pendant l'écriture,
+                # on ne fait rien et on garde la vitesse précédente (pas de coup de frein !)
                 pass
+
+        # 🔥 On applique en continu la dernière vitesse connue valide
+        left_motor.setVelocity(current_sl)
+        right_motor.setImage(current_sr) if hasattr(right_motor, 'setImage') else right_motor.setVelocity(current_sr)
 
         # ── STATE BUILD ───────────
         state = {
@@ -183,9 +189,6 @@ def main():
             # dynamics
             "gyro": gyro.getValues(),
             "accel": accel.getValues(),
-
-            # lidar (NEW)
-            #"lidar": lidar.getRangeImage() if lidar else None,
         }
 
         # ── WRITE JSON ─────────────
@@ -195,7 +198,7 @@ def main():
         # ── WRITE CAMERA ──────────
         if camera:
             try:
-                raw = camera.getImage()   # BGRA bytes
+                raw = camera.getImage()
                 img = Image.frombytes(
                     "RGBA",
                     (camera.getWidth(), camera.getHeight()),
@@ -208,13 +211,8 @@ def main():
                 jpeg = buf.getvalue()
 
                 if shm_cam is not None:
-                    # Fast path: write to shared memory (no disk I/O).
-                    # Guard against oversized frames before touching shm.
                     length = len(jpeg)
                     if length < _SHM_SIZE - _SHM_HEADER:
-                        # Write data first, then length, then seq (publish last)
-                        # so that a reader seeing the new seq is guaranteed to
-                        # find consistent length and data already in place.
                         shm_cam.buf[_SHM_HEADER:_SHM_HEADER + length] = jpeg
                         struct.pack_into("<I", shm_cam.buf, 4, length)
                         shm_seq += 1
@@ -222,7 +220,6 @@ def main():
                     else:
                         print(f"[robot_controller:{robot_name}] JPEG too large for shm ({length} B), skipping frame")
                 else:
-                    # Fallback: atomic disk write so readers never see a partial frame
                     cam_file = os.path.join(tmp, f"webots_{robot_name}_camera.jpg")
                     tmp_file = cam_file + ".tmp"
                     with open(tmp_file, "wb") as f:
@@ -231,10 +228,9 @@ def main():
             except (OSError, ValueError, RuntimeError) as e:
                 print(f"[robot_controller:{robot_name}] camera encoding error: {e}")
 
-
     # ── CLEANUP ────────────────
     if shm_cam is not None:
-        shm_cam.close()  # detach only; supervisor owns the block and will unlink it
+        shm_cam.close()
 
 
 if __name__ == "__main__":
