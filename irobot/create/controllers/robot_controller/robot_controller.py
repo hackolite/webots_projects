@@ -3,10 +3,12 @@ iRobot Create controller
 Exports sensor data + applies speed commands from customData
 """
 
+import io
 import json
 import os
 import tempfile
 from controller import Robot
+from PIL import Image
 
 
 MAX_SPEED = 16.0
@@ -165,6 +167,25 @@ def main():
         # ── WRITE JSON ─────────────
         with open(state_file, "w") as f:
             json.dump(state, f)
+
+        # ── WRITE CAMERA JPEG ──────
+        if camera:
+            try:
+                raw = camera.getImage()   # BGRA bytes
+                img = Image.frombytes(
+                    "RGBA",
+                    (camera.getWidth(), camera.getHeight()),
+                    raw,
+                    "raw",
+                    "BGRA",
+                )
+                buf = io.BytesIO()
+                img.convert("RGB").save(buf, format="JPEG", quality=75, optimize=False)
+                cam_file = os.path.join(tmp, f"webots_{robot_name}_camera.jpg")
+                with open(cam_file, "wb") as f:
+                    f.write(buf.getvalue())
+            except Exception:
+                pass
 
 
 if __name__ == "__main__":
