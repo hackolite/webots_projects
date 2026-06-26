@@ -32,6 +32,7 @@ import io
 import json
 import math
 import os
+import queue
 import struct
 import tempfile
 import threading
@@ -138,6 +139,66 @@ def _encode_jpeg(camera, quality: int = JPEG_QUALITY) -> bytes:
     buf = io.BytesIO()
     img.convert("RGB").save(buf, format="JPEG", quality=quality, optimize=False)
     return buf.getvalue()
+
+
+# ── Background JPEG encoder queues for supervisor cameras ────────────────────
+# PIL encoding is CPU-intensive. Running it inside the Webots step loop makes
+# each simulation step take a variable amount of real time, so motor commands
+# arrive at irregular intervals and the robot appears to move jerkily.
+# The main loop only calls camera.getImage() (fast, returns a bytes snapshot)
+# and drops the raw data into a single-slot queue; background threads do the
+# slow PIL work without ever touching the simulation step loop.
+
+_god_cam_raw_queue: "queue.Queue" = None      # type: ignore  (created in main)
+_ceiling_cam_raw_queue: "queue.Queue" = None  # type: ignore  (created in main)
+
+
+def _god_cam_encoder_worker() -> None:
+    """Background thread: encode god-view camera frames to JPEG."""
+    global _god_frame, _god_frame_seq
+    while True:
+        try:
+            item = _god_cam_raw_queue.get(timeout=1.0)
+        except queue.Empty:
+            continue
+        if item is None:
+            break
+        raw, w, h = item
+        try:
+            img = Image.frombytes("RGBA", (w, h), raw, "raw", "BGRA")
+            buf = io.BytesIO()
+            img.convert("RGB").save(buf, format="JPEG", quality=JPEG_QUALITY, optimize=False)
+            frame = buf.getvalue()
+            with _god_cam_cond:
+                _god_frame = frame
+                _god_frame_seq += 1
+                _god_cam_cond.notify_all()
+        except Exception as e:
+            print(f"[api_supervisor] god_camera encoding error: {e}")
+
+
+def _ceiling_cam_encoder_worker() -> None:
+    """Background thread: encode ceiling camera frames to JPEG."""
+    global _ceiling_frame, _ceiling_frame_seq
+    while True:
+        try:
+            item = _ceiling_cam_raw_queue.get(timeout=1.0)
+        except queue.Empty:
+            continue
+        if item is None:
+            break
+        raw, w, h = item
+        try:
+            img = Image.frombytes("RGBA", (w, h), raw, "raw", "BGRA")
+            buf = io.BytesIO()
+            img.convert("RGB").save(buf, format="JPEG", quality=JPEG_QUALITY, optimize=False)
+            frame = buf.getvalue()
+            with _ceiling_cam_cond:
+                _ceiling_frame = frame
+                _ceiling_frame_seq += 1
+                _ceiling_cam_cond.notify_all()
+        except Exception as e:
+            print(f"[api_supervisor] ceiling_camera encoding error: {e}")
 
 
 # ── MJPEG streaming generators ────────────────────────────────────────────────
@@ -570,6 +631,24 @@ def main():
             print(f"[api_supervisor] shm create error for {rid}: {exc}")
         _robot_shm[rid] = shm
 
+    # ── Start background JPEG encoder threads for supervisor cameras ─────────
+    # Camera dimensions are fixed for the lifetime of the simulation; capture
+    # them once here so the main loop only needs a single getImage() call.
+    global _god_cam_raw_queue, _ceiling_cam_raw_queue
+
+    god_cam_size: "tuple[int, int] | None" = None
+    ceiling_cam_size: "tuple[int, int] | None" = None
+
+    if god_cam:
+        god_cam_size = (god_cam.getWidth(), god_cam.getHeight())
+        _god_cam_raw_queue = queue.Queue(maxsize=1)
+        threading.Thread(target=_god_cam_encoder_worker, daemon=True).start()
+
+    if ceiling_cam:
+        ceiling_cam_size = (ceiling_cam.getWidth(), ceiling_cam.getHeight())
+        _ceiling_cam_raw_queue = queue.Queue(maxsize=1)
+        threading.Thread(target=_ceiling_cam_encoder_worker, daemon=True).start()
+
     # ── Start Flask in a background thread ───────────────────────────────────
     flask_thread = threading.Thread(target=_run_flask, daemon=True)
     flask_thread.start()
@@ -665,26 +744,28 @@ def main():
                         pass
 
             # ── Capture god camera frame into memory ─────────────────────────
-            if god_cam:
+            # Only grab the raw bytes here (fast). The background encoder thread
+            # does the CPU-intensive PIL + JPEG work outside the step loop.
+            if god_cam and god_cam_size is not None:
                 try:
-                    frame = _encode_jpeg(god_cam)
-                    with _god_cam_cond:
-                        _god_frame = frame
-                        _god_frame_seq += 1
-                        _god_cam_cond.notify_all()
+                    raw = god_cam.getImage()
+                    try:
+                        _god_cam_raw_queue.put_nowait((raw,) + god_cam_size)
+                    except queue.Full:
+                        pass  # encoder busy, drop this frame
                 except Exception as e:
-                    print(f"[api_supervisor] god_camera encoding error: {e}")
+                    print(f"[api_supervisor] god_camera capture error: {e}")
 
             # ── Capture ceiling camera frame into memory ──────────────────────
-            if ceiling_cam:
+            if ceiling_cam and ceiling_cam_size is not None:
                 try:
-                    frame = _encode_jpeg(ceiling_cam)
-                    with _ceiling_cam_cond:
-                        _ceiling_frame = frame
-                        _ceiling_frame_seq += 1
-                        _ceiling_cam_cond.notify_all()
+                    raw = ceiling_cam.getImage()
+                    try:
+                        _ceiling_cam_raw_queue.put_nowait((raw,) + ceiling_cam_size)
+                    except queue.Full:
+                        pass  # encoder busy, drop this frame
                 except Exception as e:
-                    print(f"[api_supervisor] ceiling_camera encoding error: {e}")
+                    print(f"[api_supervisor] ceiling_camera capture error: {e}")
 
     finally:
         # ── Release shared-memory blocks ─────────────────────────────────────

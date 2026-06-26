@@ -6,8 +6,10 @@ Exports sensor data + applies speed commands from customData continuously
 import io
 import json
 import os
+import queue
 import struct
 import tempfile
+import threading
 import time
 from multiprocessing.shared_memory import SharedMemory
 from controller import Robot
@@ -17,6 +19,47 @@ _SHM_HEADER = 8  # header: [seq: uint32 LE][length: uint32 LE]
 _SHM_SIZE = 512 * 1024 + _SHM_HEADER  # 512 KB payload + header
 
 MAX_SPEED = 16.0
+
+
+def _run_camera_encoder(cam_w, cam_h, shm_cam, robot_name, tmp, in_queue):
+    """Background thread: encodes raw BGRA frames to JPEG and writes to shm or file.
+
+    Runs independently of the Webots step loop so that PIL encoding never
+    blocks the simulation timestep and causes jerky movement.
+    """
+    seq = 0
+    while True:
+        try:
+            raw = in_queue.get(timeout=1.0)
+        except queue.Empty:
+            continue
+        if raw is None:
+            break
+        try:
+            img = Image.frombytes("RGBA", (cam_w, cam_h), raw, "raw", "BGRA")
+            buf = io.BytesIO()
+            img.convert("RGB").save(buf, format="JPEG", quality=75)
+            jpeg = buf.getvalue()
+
+            if shm_cam is not None:
+                length = len(jpeg)
+                if length < _SHM_SIZE - _SHM_HEADER:
+                    # Write data first, then length, then seq so readers always
+                    # see a consistent header + payload pair.
+                    shm_cam.buf[_SHM_HEADER:_SHM_HEADER + length] = jpeg
+                    struct.pack_into("<I", shm_cam.buf, 4, length)
+                    seq += 1
+                    struct.pack_into("<I", shm_cam.buf, 0, seq)
+                else:
+                    print(f"[robot_controller:{robot_name}] JPEG too large for shm ({length} B), skipping frame")
+            else:
+                cam_file = os.path.join(tmp, f"webots_{robot_name}_camera.jpg")
+                tmp_file = cam_file + ".tmp"
+                with open(tmp_file, "wb") as f:
+                    f.write(jpeg)
+                os.replace(tmp_file, cam_file)
+        except (OSError, ValueError, RuntimeError) as e:
+            print(f"[robot_controller:{robot_name}] camera encoding error: {e}")
 
 
 def safe_device(robot, name):
@@ -99,7 +142,6 @@ def main():
     # SHARED MEMORY (camera IPC)
     # ─────────────────────────────
     shm_cam = None
-    shm_seq = 0
     if camera:
         shm_name = f"webots_{robot_name}_camera_shm"
         for _ in range(20):
@@ -140,6 +182,25 @@ def main():
     state_file = os.path.join(tmp, f"webots_{robot_name}_state.json")
 
     # ─────────────────────────────
+    # CAMERA ENCODER THREAD
+    # ─────────────────────────────
+    # PIL JPEG encoding is CPU-intensive and must NOT block the Webots step
+    # loop, otherwise each step takes a variable amount of real time which
+    # makes motor commands arrive unevenly and produces jerky motion.
+    # The main loop only calls camera.getImage() (fast) and puts the raw
+    # bytes into a single-slot queue; the background thread does the slow
+    # encoding work independently.
+    cam_queue = None
+    if camera:
+        cam_queue = queue.Queue(maxsize=1)
+        enc_thread = threading.Thread(
+            target=_run_camera_encoder,
+            args=(camera.getWidth(), camera.getHeight(), shm_cam, robot_name, tmp, cam_queue),
+            daemon=True,
+        )
+        enc_thread.start()
+
+    # ─────────────────────────────
     # MAIN LOOP
     # ─────────────────────────────
     while robot.step(timestep) != -1:
@@ -161,7 +222,7 @@ def main():
 
         # 🔥 On applique en continu la dernière vitesse connue valide
         left_motor.setVelocity(current_sl)
-        right_motor.setImage(current_sr) if hasattr(right_motor, 'setImage') else right_motor.setVelocity(current_sr)
+        right_motor.setVelocity(current_sr)
 
         # ── STATE BUILD ───────────
         state = {
@@ -195,40 +256,25 @@ def main():
         with open(state_file, "w") as f:
             json.dump(state, f)
 
-        # ── WRITE CAMERA ──────────
-        if camera:
+        # ── CAPTURE CAMERA ─────────
+        # Only grab the raw bytes here (fast). The background encoder thread
+        # does the CPU-intensive PIL + JPEG work so the step loop stays lean.
+        if camera and cam_queue is not None:
             try:
-                raw = camera.getImage()
-                img = Image.frombytes(
-                    "RGBA",
-                    (camera.getWidth(), camera.getHeight()),
-                    raw,
-                    "raw",
-                    "BGRA",
-                )
-                buf = io.BytesIO()
-                img.convert("RGB").save(buf, format="JPEG", quality=75)
-                jpeg = buf.getvalue()
-
-                if shm_cam is not None:
-                    length = len(jpeg)
-                    if length < _SHM_SIZE - _SHM_HEADER:
-                        shm_cam.buf[_SHM_HEADER:_SHM_HEADER + length] = jpeg
-                        struct.pack_into("<I", shm_cam.buf, 4, length)
-                        shm_seq += 1
-                        struct.pack_into("<I", shm_cam.buf, 0, shm_seq)
-                    else:
-                        print(f"[robot_controller:{robot_name}] JPEG too large for shm ({length} B), skipping frame")
-                else:
-                    cam_file = os.path.join(tmp, f"webots_{robot_name}_camera.jpg")
-                    tmp_file = cam_file + ".tmp"
-                    with open(tmp_file, "wb") as f:
-                        f.write(jpeg)
-                    os.replace(tmp_file, cam_file)
+                raw = camera.getImage()   # BGRA bytes – immutable, safe to hand off
+                try:
+                    cam_queue.put_nowait(raw)
+                except queue.Full:
+                    pass  # encoder still busy with previous frame; drop this one
             except (OSError, ValueError, RuntimeError) as e:
-                print(f"[robot_controller:{robot_name}] camera encoding error: {e}")
+                print(f"[robot_controller:{robot_name}] camera capture error: {e}")
 
     # ── CLEANUP ────────────────
+    if cam_queue is not None:
+        try:
+            cam_queue.put_nowait(None)  # signal encoder thread to exit
+        except queue.Full:
+            pass
     if shm_cam is not None:
         shm_cam.close()
 
