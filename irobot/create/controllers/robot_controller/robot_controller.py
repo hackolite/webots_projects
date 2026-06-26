@@ -156,17 +156,22 @@ def main():
     # ─────────────────────────────
     # GPS / IMU / COMPASS
     # ─────────────────────────────
-    gps = robot.getDevice("gps")
-    compass = robot.getDevice("compass")
-    imu = robot.getDevice("inertial_unit")
-    gyro = robot.getDevice("gyro")
-    accel = robot.getDevice("accelerometer")
+    gps = safe_device(robot, "gps")
+    compass = safe_device(robot, "compass")
+    imu = safe_device(robot, "inertial_unit")
+    gyro = safe_device(robot, "gyro")
+    accel = safe_device(robot, "accelerometer")
 
-    gps.enable(timestep)
-    compass.enable(timestep)
-    imu.enable(timestep)
-    gyro.enable(timestep)
-    accel.enable(timestep)
+    if gps:
+        gps.enable(timestep)
+    if compass:
+        compass.enable(timestep)
+    if imu:
+        imu.enable(timestep)
+    if gyro:
+        gyro.enable(timestep)
+    if accel:
+        accel.enable(timestep)
 
     # ─────────────────────────────
     # FILE
@@ -225,15 +230,17 @@ def main():
             # NEW SONAR (meters)
             "sonar_front": sonar_front_value,
 
-            "gps": gps.getValues(),
-            "compass": compass.getValues(),
-            "imu_rpy": imu.getRollPitchYaw(),
-            "gyro": gyro.getValues(),
-            "accel": accel.getValues(),
+            "gps": list(gps.getValues()) if gps else None,
+            "compass": list(compass.getValues()) if compass else None,
+            "imu_rpy": list(imu.getRollPitchYaw()) if imu else None,
+            "gyro": list(gyro.getValues()) if gyro else None,
+            "accel": list(accel.getValues()) if accel else None,
         }
 
-        with open(state_file, "w") as f:
+        tmp_state_file = state_file + ".tmp"
+        with open(tmp_state_file, "w") as f:
             json.dump(state, f)
+        os.replace(tmp_state_file, state_file)
 
         # CAMERA PIPELINE
         if camera and cam_queue:
