@@ -3,10 +3,17 @@ iRobot Create controller
 Exports sensor data + applies speed commands from customData
 """
 
+import io
 import json
 import os
+import struct
 import tempfile
+import time
+from multiprocessing.shared_memory import SharedMemory
 from controller import Robot
+from PIL import Image
+
+_SHM_HEADER = 8   # header: [seq: uint32 LE][length: uint32 LE]
 
 
 MAX_SPEED = 16.0
@@ -82,6 +89,24 @@ def main():
     camera = safe_device(robot, "front_camera")
     if camera:
         camera.enable(timestep)
+
+    # ─────────────────────────────
+    # SHARED MEMORY (camera IPC)
+    # ─────────────────────────────
+    # The api_supervisor creates the block before robot controllers start.
+    # We attempt to attach, retrying briefly in case of startup ordering.
+    shm_cam = None
+    shm_seq = 0
+    if camera:
+        shm_name = f"webots_{robot_name}_camera_shm"
+        for _ in range(20):   # up to ~2 s
+            try:
+                shm_cam = SharedMemory(name=shm_name, create=False)
+                break
+            except FileNotFoundError:
+                time.sleep(0.1)
+        if shm_cam is None:
+            print(f"[robot_controller:{robot_name}] shm not found, falling back to file")
 
     # ─────────────────────────────
     # LI DAR (IMPORTANT)
@@ -165,6 +190,50 @@ def main():
         # ── WRITE JSON ─────────────
         with open(state_file, "w") as f:
             json.dump(state, f)
+
+        # ── WRITE CAMERA ──────────
+        if camera:
+            try:
+                raw = camera.getImage()   # BGRA bytes
+                img = Image.frombytes(
+                    "RGBA",
+                    (camera.getWidth(), camera.getHeight()),
+                    raw,
+                    "raw",
+                    "BGRA",
+                )
+                buf = io.BytesIO()
+                img.convert("RGB").save(buf, format="JPEG", quality=75)
+                jpeg = buf.getvalue()
+
+                if shm_cam is not None:
+                    # Fast path: write to shared memory (no disk I/O).
+                    # Guard against oversized frames before touching shm.
+                    length = len(jpeg)
+                    if length < _SHM_SIZE - _SHM_HEADER:
+                        # Write data first, then length, then seq (publish last)
+                        # so that a reader seeing the new seq is guaranteed to
+                        # find consistent length and data already in place.
+                        shm_cam.buf[_SHM_HEADER:_SHM_HEADER + length] = jpeg
+                        struct.pack_into("<I", shm_cam.buf, 4, length)
+                        shm_seq += 1
+                        struct.pack_into("<I", shm_cam.buf, 0, shm_seq)
+                    else:
+                        print(f"[robot_controller:{robot_name}] JPEG too large for shm ({length} B), skipping frame")
+                else:
+                    # Fallback: atomic disk write so readers never see a partial frame
+                    cam_file = os.path.join(tmp, f"webots_{robot_name}_camera.jpg")
+                    tmp_file = cam_file + ".tmp"
+                    with open(tmp_file, "wb") as f:
+                        f.write(jpeg)
+                    os.replace(tmp_file, cam_file)
+            except (OSError, ValueError, RuntimeError) as e:
+                print(f"[robot_controller:{robot_name}] camera encoding error: {e}")
+
+
+    # ── CLEANUP ────────────────
+    if shm_cam is not None:
+        shm_cam.close()  # detach only; supervisor owns the block and will unlink it
 
 
 if __name__ == "__main__":

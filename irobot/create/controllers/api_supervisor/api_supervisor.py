@@ -32,10 +32,12 @@ import io
 import json
 import math
 import os
+import struct
 import tempfile
 import threading
 import time
 from copy import deepcopy
+from multiprocessing.shared_memory import SharedMemory
 
 from controller import Supervisor
 
@@ -99,6 +101,22 @@ _ceiling_frame_seq: int = 0
 
 _tmp = tempfile.gettempdir()
 
+# ── Shared-memory layout for robot cameras ────────────────────────────────────
+# Header: [seq: uint32 LE][length: uint32 LE] + JPEG payload
+# The robot controller (separate process) writes; the supervisor reads.
+_SHM_HEADER = 8           # bytes reserved for the two uint32 fields
+_SHM_SIZE = 512 * 1024 + _SHM_HEADER   # 512 KB payload + header (ample for any JPEG frame)
+
+# Per-robot shm handles (created in main(), populated at runtime)
+_robot_shm: dict = {}          # rid → SharedMemory | None
+
+# Per-robot in-memory frame state (supervisor main loop → Flask thread)
+_robot_cam_cond: dict = {rid: threading.Condition() for rid in ROBOT_DEFS}
+_robot_frames: dict = {rid: b"" for rid in ROBOT_DEFS}
+_robot_frame_seq: dict = {rid: 0 for rid in ROBOT_DEFS}
+_robot_shm_last_seq: dict = {rid: 0 for rid in ROBOT_DEFS}    # last shm seq consumed
+_robot_file_mtime: dict = {rid: 0.0 for rid in ROBOT_DEFS}   # for file-fallback path
+
 
 # ── JPEG encoding helper ──────────────────────────────────────────────────────
 
@@ -149,29 +167,29 @@ def _supervisor_camera_stream(cond, get_frame, get_seq):
 
 
 def _robot_camera_stream(rid: str):
-    """Generator for robot cameras (written to /tmp by robot_controller.py).
+    """Generator for robot cameras.
 
-    Detects new frames via mtime so duplicate file reads are avoided.
+    Waits efficiently on a per-robot ``Condition`` that is notified by the
+    supervisor main loop whenever a new frame arrives (from shared memory or,
+    as a fallback, from the /tmp JPEG file).  This is identical in structure to
+    ``_supervisor_camera_stream`` – no polling, no sleep.
     """
-    path = os.path.join(_tmp, f"webots_{rid}_camera.jpg")
-    last_mtime = 0.0
+    cond = _robot_cam_cond[rid]
+    last_seq = -1
     while True:
-        try:
-            mtime = os.path.getmtime(path)
-            if mtime != last_mtime:
-                last_mtime = mtime
-                with open(path, "rb") as fh:
-                    frame = fh.read()
-                if frame:
-                    yield (
-                        b"--frame\r\n"
-                        b"Content-Type: image/jpeg\r\n\r\n"
-                        + frame
-                        + b"\r\n"
-                    )
-        except OSError:
-            pass
-        time.sleep(0.016)   # ~60 Hz poll – never misses a 30 fps robot frame
+        with cond:
+            cond.wait_for(lambda: _robot_frame_seq[rid] != last_seq, timeout=1.0)
+            seq = _robot_frame_seq[rid]
+            frame = _robot_frames[rid]
+        if seq != last_seq:
+            last_seq = seq
+            if frame:
+                yield (
+                    b"--frame\r\n"
+                    b"Content-Type: image/jpeg\r\n\r\n"
+                    + frame
+                    + b"\r\n"
+                )
 
 
 # ── Helper: extract yaw angle from Webots axis-angle rotation ────────────────
@@ -390,6 +408,13 @@ def robot_camera(rid):
     rid = _resolve_rid(rid)
     if rid not in ROBOT_DEFS:
         return jsonify({"error": "robot not found"}), 404
+    # Fast path: use in-memory frame populated from shared memory
+    with _robot_cam_cond[rid]:
+        frame = _robot_frames[rid]
+    if frame:
+        b64 = base64.b64encode(frame).decode()
+        return jsonify({"robot_id": rid, "format": "jpeg", "data": b64})
+    # Fallback: read from /tmp file (shm not yet ready or not available)
     img_path = os.path.join(_tmp, f"webots_{rid}_camera.jpg")
     if not os.path.exists(img_path):
         return jsonify({"error": "no image available yet"}), 503
@@ -521,84 +546,155 @@ def main():
     else:
         print("[api_supervisor] WARNING: ceiling_camera device not found")
 
+    # ── Create shared-memory blocks for robot cameras ────────────────────────
+    # The supervisor creates the blocks; robot controllers attach to them.
+    # If a stale block exists from a previous run it is unlinked and recreated.
+    for rid in ROBOT_DEFS:
+        shm_name = f"webots_{rid}_camera_shm"
+        shm = None
+        try:
+            shm = SharedMemory(name=shm_name, create=True, size=_SHM_SIZE)
+            shm.buf[:_SHM_HEADER] = b"\x00" * _SHM_HEADER
+            print(f"[api_supervisor] shm created: {shm_name}")
+        except FileExistsError:
+            try:
+                stale = SharedMemory(name=shm_name, create=False)
+                stale.unlink()
+                stale.close()
+                shm = SharedMemory(name=shm_name, create=True, size=_SHM_SIZE)
+                shm.buf[:_SHM_HEADER] = b"\x00" * _SHM_HEADER
+                print(f"[api_supervisor] shm recreated (stale removed): {shm_name}")
+            except Exception as exc:
+                print(f"[api_supervisor] shm recreate error for {rid}: {exc}")
+        except Exception as exc:
+            print(f"[api_supervisor] shm create error for {rid}: {exc}")
+        _robot_shm[rid] = shm
+
     # ── Start Flask in a background thread ───────────────────────────────────
     flask_thread = threading.Thread(target=_run_flask, daemon=True)
     flask_thread.start()
     print(f"[api_supervisor] REST API listening on http://0.0.0.0:{API_PORT}")
 
-    while supervisor.step(timestep) != -1:
-        # ── Handle pause / resume requests ──────────────────────────────────
-        with _lock:
-            do_pause = _pending_pause
-            do_resume = _pending_resume
-            _pending_pause = False
-            _pending_resume = False
-
-        if do_pause and not _paused:
-            supervisor.simulationSetMode(supervisor.SIMULATION_MODE_PAUSE)
+    try:
+        while supervisor.step(timestep) != -1:
+            # ── Handle pause / resume requests ──────────────────────────────
             with _lock:
-                _paused = True
+                do_pause = _pending_pause
+                do_resume = _pending_resume
+                _pending_pause = False
+                _pending_resume = False
 
-        if do_resume and _paused:
-            supervisor.simulationSetMode(supervisor.SIMULATION_MODE_RUN)
+            if do_pause and not _paused:
+                supervisor.simulationSetMode(supervisor.SIMULATION_MODE_PAUSE)
+                with _lock:
+                    _paused = True
+
+            if do_resume and _paused:
+                supervisor.simulationSetMode(supervisor.SIMULATION_MODE_RUN)
+                with _lock:
+                    _paused = False
+
+            # ── Update simulation time ───────────────────────────────────────
             with _lock:
-                _paused = False
+                _sim_time = supervisor.getTime()
 
-        # ── Update simulation time ───────────────────────────────────────────
-        with _lock:
-            _sim_time = supervisor.getTime()
+            # ── Update robot state and apply commands ────────────────────────
+            for rid, node in nodes.items():
+                if node is None:
+                    continue
 
-        # ── Update robot state and apply commands ────────────────────────────
-        for rid, node in nodes.items():
-            if node is None:
-                continue
+                # Read position & orientation from simulation
+                trans = node.getField("translation").getSFVec3f()
+                rot = node.getField("rotation").getSFRotation()
 
-            # Read position & orientation from simulation
-            trans = node.getField("translation").getSFVec3f()
-            rot = node.getField("rotation").getSFRotation()
+                with _lock:
+                    _robots[rid]["translation"] = list(trans)
+                    _robots[rid]["rotation"] = list(rot)
 
-            with _lock:
-                _robots[rid]["translation"] = list(trans)
-                _robots[rid]["rotation"] = list(rot)
+                    target = _robots[rid].get("goto_target")
+                    if target is not None:
+                        sl, sr = _compute_goto_speeds(trans, rot, target)
+                        if sl == 0.0 and sr == 0.0:
+                            # Arrived
+                            _robots[rid]["goto_target"] = None
+                            _robots[rid]["status"] = "idle"
+                        _robots[rid]["speed_left"] = sl
+                        _robots[rid]["speed_right"] = sr
 
-                target = _robots[rid].get("goto_target")
-                if target is not None:
-                    sl, sr = _compute_goto_speeds(trans, rot, target)
-                    if sl == 0.0 and sr == 0.0:
-                        # Arrived
-                        _robots[rid]["goto_target"] = None
-                        _robots[rid]["status"] = "idle"
-                    _robots[rid]["speed_left"] = sl
-                    _robots[rid]["speed_right"] = sr
+                    sl = _robots[rid]["speed_left"]
+                    sr = _robots[rid]["speed_right"]
 
-                sl = _robots[rid]["speed_left"]
-                sr = _robots[rid]["speed_right"]
+                # Write command to robot's customData (read by robot_controller.py)
+                cmd = json.dumps({"speed_left": sl, "speed_right": sr})
+                node.getField("customData").setSFString(cmd)
 
-            # Write command to robot's customData (read by robot_controller.py)
-            cmd = json.dumps({"speed_left": sl, "speed_right": sr})
-            node.getField("customData").setSFString(cmd)
+            # ── Pull robot camera frames from shm (or file fallback) ─────────
+            for rid in ROBOT_DEFS:
+                shm = _robot_shm.get(rid)
+                if shm is not None:
+                    try:
+                        # Read the 8-byte header as a single copy to minimise torn reads.
+                        header = bytes(shm.buf[0:_SHM_HEADER])
+                        seq = struct.unpack_from("<I", header, 0)[0]
+                        if seq != _robot_shm_last_seq[rid]:
+                            length = struct.unpack_from("<I", header, 4)[0]
+                            if 0 < length < _SHM_SIZE - _SHM_HEADER:
+                                frame = bytes(shm.buf[_SHM_HEADER:_SHM_HEADER + length])
+                                _robot_shm_last_seq[rid] = seq
+                                with _robot_cam_cond[rid]:
+                                    _robot_frames[rid] = frame
+                                    _robot_frame_seq[rid] += 1
+                                    _robot_cam_cond[rid].notify_all()
+                    except Exception as exc:
+                        print(f"[api_supervisor] shm read error for {rid}: {exc}")
+                else:
+                    # Fallback: detect new file via mtime
+                    path = os.path.join(_tmp, f"webots_{rid}_camera.jpg")
+                    try:
+                        mtime = os.path.getmtime(path)
+                        if mtime != _robot_file_mtime[rid]:
+                            _robot_file_mtime[rid] = mtime
+                            with open(path, "rb") as fh:
+                                frame = fh.read()
+                            if frame:
+                                with _robot_cam_cond[rid]:
+                                    _robot_frames[rid] = frame
+                                    _robot_frame_seq[rid] += 1
+                                    _robot_cam_cond[rid].notify_all()
+                    except OSError:
+                        pass
 
-        # ── Capture god camera frame into memory ─────────────────────────────
-        if god_cam:
-            try:
-                frame = _encode_jpeg(god_cam)
-                with _god_cam_cond:
-                    _god_frame = frame
-                    _god_frame_seq += 1
-                    _god_cam_cond.notify_all()
-            except Exception as e:
-                print(f"[api_supervisor] god_camera encoding error: {e}")
+            # ── Capture god camera frame into memory ─────────────────────────
+            if god_cam:
+                try:
+                    frame = _encode_jpeg(god_cam)
+                    with _god_cam_cond:
+                        _god_frame = frame
+                        _god_frame_seq += 1
+                        _god_cam_cond.notify_all()
+                except Exception as e:
+                    print(f"[api_supervisor] god_camera encoding error: {e}")
 
-        # ── Capture ceiling camera frame into memory ──────────────────────────
-        if ceiling_cam:
-            try:
-                frame = _encode_jpeg(ceiling_cam)
-                with _ceiling_cam_cond:
-                    _ceiling_frame = frame
-                    _ceiling_frame_seq += 1
-                    _ceiling_cam_cond.notify_all()
-            except Exception as e:
-                print(f"[api_supervisor] ceiling_camera encoding error: {e}")
+            # ── Capture ceiling camera frame into memory ──────────────────────
+            if ceiling_cam:
+                try:
+                    frame = _encode_jpeg(ceiling_cam)
+                    with _ceiling_cam_cond:
+                        _ceiling_frame = frame
+                        _ceiling_frame_seq += 1
+                        _ceiling_cam_cond.notify_all()
+                except Exception as e:
+                    print(f"[api_supervisor] ceiling_camera encoding error: {e}")
+
+    finally:
+        # ── Release shared-memory blocks ─────────────────────────────────────
+        for rid, shm in _robot_shm.items():
+            if shm is not None:
+                try:
+                    shm.unlink()
+                    shm.close()
+                except Exception:
+                    pass
 
 
 if __name__ == "__main__":

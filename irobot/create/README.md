@@ -82,10 +82,16 @@ POST /robots/{id}/goto           Autonomous navigation to a point
 POST /robots/{id}/stop           Immediate stop (sets both speeds to 0)
 GET  /robots/{id}/camera         Robot's front camera as base64 JPEG
                                  Response: {"robot_id": ..., "format": "jpeg", "data": "<b64>"}
+GET  /robots/{id}/camera/stream  Robot's front camera as MJPEG live stream
+                                 Content-Type: multipart/x-mixed-replace; boundary=frame
 GET  /god/camera                 Top-down god-view camera as base64 JPEG (512×512, whole apartment)
                                  Response: {"source": "god_camera", "format": "jpeg", "data": "<b64>"}
+GET  /god/camera/stream          Top-down god-view camera as MJPEG live stream
+                                 Content-Type: multipart/x-mixed-replace; boundary=frame
 GET  /robots/ceiling/camera      Kitchen ceiling camera as base64 JPEG (320×320)
                                  Response: {"source": "ceiling_camera", "format": "jpeg", "data": "<b64>"}
+GET  /robots/ceiling/camera/stream  Kitchen ceiling camera as MJPEG live stream
+                                 Content-Type: multipart/x-mixed-replace; boundary=frame
 ```
 
 ### Movement model — differential drive
@@ -182,6 +188,11 @@ curl http://localhost:5000/robots/ceiling/camera | python3 -c \
 # Get ROBOT_1's front camera image
 curl http://localhost:5000/robots/ROBOT_1/camera | python3 -c \
   "import sys,json,base64; d=json.load(sys.stdin); open('robot1_cam.jpg','wb').write(base64.b64decode(d['data']))"
+
+# View ROBOT_1's front camera as a live MJPEG stream (open in browser or VLC)
+# URL: http://localhost:5000/robots/ROBOT_1/camera/stream
+# or with curl:
+curl http://localhost:5000/robots/ROBOT_1/camera/stream --output - | mpv -
 
 # Get simulated time
 curl http://localhost:5000/simulation/time
