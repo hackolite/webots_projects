@@ -90,12 +90,13 @@ keyboard.enable(timestep)
 # ============================================================
 
 # Smoothing commandes pilote
-SMOOTH_H   = 0.04
+SMOOTH_H_ATTACK = 0.12  # montee rapide du boost horizontal
+SMOOTH_H_DECAY  = 0.50  # descente tres rapide => boost momentane uniquement
 SMOOTH_YAW = 0.04
 SMOOTH_V   = 0.04
 
 # Trainee
-DRAG_H   = 0.25
+DRAG_H   = 0.04   # tres faible => haute inertie (blimp coaste longtemps)
 DRAG_V   = 0.30
 DRAG_YAW = 0.35
 
@@ -105,7 +106,7 @@ VMAX_V   = 1.0
 VMAX_YAW = 1.0
 
 # Poussee max pilote
-THRUST_H   = 3.0
+THRUST_H   = 1.5   # reduit : le boost est bref, pas besoin de beaucoup de force
 THRUST_V   = 3.0
 THRUST_YAW = 2.0
 
@@ -260,7 +261,9 @@ while robot.step(timestep) != -1:
     # --------------------------------------------------------
     # 3. Smoothing commandes
     # --------------------------------------------------------
-    cmd_x_smooth   = smooth(cmd_x_smooth,   target_x,   SMOOTH_H)
+    # Horizontal : montee moderee, descente rapide => boost momentane
+    h_rate = SMOOTH_H_ATTACK if target_x != 0.0 else SMOOTH_H_DECAY
+    cmd_x_smooth   = smooth(cmd_x_smooth,   target_x,   h_rate)
     cmd_yaw_smooth = smooth(cmd_yaw_smooth, target_yaw, SMOOTH_YAW)
     cmd_z_smooth   = smooth(cmd_z_smooth,   target_z,   SMOOTH_V)
 

@@ -296,6 +296,7 @@ PROTO Blimp [
 
       DEF CAMERA Camera {
         translation 0 0 -1.5
+        rotation 0 1 0 1.5708
         name "camera"
         fieldOfView 1.0
         width 320
