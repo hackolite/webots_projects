@@ -10,11 +10,17 @@ EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/project
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/buildings/protos/LargeResidentialTower.proto"
 
 WorldInfo {
+  contactProperties [
+    ContactProperties {
+      bounce 0.3
+      bounceVelocity 0.1
+    }
+  ]
 }
 Viewpoint {
   orientation -0.5773502691896258 0.5773502691896258 0.5773502691896258 2.0944
-  position 1719.7469106588374 1459.7340647343829 513912591.2413804
-  follow "TIAGo LITE"
+  position 0 -20 15
+  follow "Blimp"
 }
 TexturedBackground {
 }
@@ -116,10 +122,8 @@ ModernHouse {
   name "modern house(3)"
 }
 Blimp {
-  hidden linearVelocity_0 -209.72949840488627 -1289.7930706970521 6491885.600113244
-  hidden angularVelocity_0 -8812.273034718672 2047.2186641912435 -4260.60320876718
-  translation -6226869.93668259 -1543090.9278288763 565722060.3851871
-  rotation -0.30501893226138266 -0.2650424666602986 0.9147217838385345 1.4344765088826745
+  translation 0 0 2
+  rotation 0 0 1 0
   controller "blimp_controller"
 }
 LargeResidentialTower {

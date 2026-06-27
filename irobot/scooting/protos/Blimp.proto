@@ -373,7 +373,7 @@ PROTO Blimp [
         shaftAxis 0 0 1
         centerOfThrust 0 0 0
         thrustConstants 50 0
-        torqueConstants 1 0
+        torqueConstants 0 0
         device RotationalMotor {
           name "motor3"
           maxTorque 500
@@ -384,6 +384,15 @@ PROTO Blimp [
     name IS name
     model "LIS Blimp Van-Scale"
 
+    boundingObject Transform {
+      scale 2.1 1 1
+      children [
+        Sphere {
+          radius 1.0
+        }
+      ]
+    }
+
     physics Physics {
       density -1
       mass 3.0
@@ -392,6 +401,10 @@ PROTO Blimp [
         0.6 4.7 4.7
         0 0 0
       ]
+      damping Damping {
+        linear 0.2
+        angular 0.8
+      }
     }
 
     controller IS controller
