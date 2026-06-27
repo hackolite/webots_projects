@@ -293,7 +293,7 @@ while robot.step(timestep) != -1:
     corr_pitch = 0.0
 
     if imu:
-        # Utiliser le gyro pour le terme derivé (plus stable que les differences finies)
+        # Utiliser le gyro pour le terme dérivé (plus stable que les differences finies)
         if gyro:
             droll  = gyro_vals[0]   # vitesse angulaire axe X (roll)
             dpitch = gyro_vals[1]   # vitesse angulaire axe Y (pitch)
@@ -347,7 +347,7 @@ while robot.step(timestep) != -1:
 
     # corr_pitch en mode commun : reduit/augmente la poussee des deux moteurs egalement
     # => couple a piquer negatif/positif qui compense l'inclinaison (correct physiquement)
-    # corr_roll supprime : les moteurs horizontaux ne peuvent pas creer de couple de roulis
+    # corr_roll supprime : les moteurs horizontaux ne peuvent pas créer de couple de roulis
     # (la stabilite en roulis est assuree par l'effet pendule, CoM 1.5 m sous le centre)
     omega1 = base1 - corr_pitch
     omega2 = base2 - corr_pitch
