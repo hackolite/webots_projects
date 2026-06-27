@@ -566,4 +566,3 @@ while robot.step(timestep) != -1:
             f" | pos_err_fwd={pos_err_fwd:.3f}m corr_pos={corr_pos:.3f}"
             f" | corr_pitch={corr_pitch:.3f}"
         )
-
