@@ -2,13 +2,16 @@
 Controleur Blimp - Navigation inertielle + Auto-stabilisation
 =============================================================
 - Multi-touches : combinaison libre (ex. avant + lacet simultanes)
-- Anti-pique     : correcteur PD pitch renforcé (KP/KD plus élevés)
+- Anti-pique     : amortissement D-only du taux de tangage en croisiere
+                   (le terme P est desactive pendant la poussee horizontale :
+                    le pendule fournit deja le rappel naturel, le P augmenterait
+                    la raideur sans amortissement suffisant → balancier sous-amorti)
 - Anti-dérive    : maintien de position GPS (hold XY) quand aucune commande
                    horizontale — correction PD vitesse + position en axe avant
 - Auto-stab altitude  : maintien de la hauteur GPS si aucune commande verticale
 - Maintien de cap     : PD yaw quand aucune commande de lacet
 - Smoothing des commandes pilote
-- Amortissement angulaire via Gyro
+- Amortissement angulaire via Gyro (D-only pitch en croisiere = SOTA blimp control)
 - Log inertiels complets : position GPS, vitesse estimée, RPY, gyro XYZ, accél XYZ
 
 Controles UNIVERSELS (Évite les bugs AZERTY) :
@@ -130,17 +133,21 @@ MOTOR_SCALE_V = 1.0
 # ou sqrt(m*g/50) = 0.767 rad/s (quadratique). On utilise 0.7 comme valeur intermédiaire.
 HOVER_OMEGA = 0.7
 
-# --- Auto-stab attitude (roll / pitch) — anti-pique renforcé ---
-# KP_ATT : inversion moteurs si pitch > VMAX_H/KP_ATT
-#   KP_ATT=0.5 → inversion à 13.7° (>> équilibre croisière ~6.3°)
-#   Équilibre théorique : pitch_eq = 75*VMAX_H / (44 + 75*KP_ATT)
-#   KP=0.3 → 7.7°  |  KP=0.5 → 6.3°  (pendule = 44 Nm/rad, moteurs à 1.5 m)
-KP_ATT = 0.5
-KD_ATT = 0.20
+# --- Auto-stab attitude (roll / pitch) ---
+# Strategie D-only en croisiere (pilot_wants_h ou |vx|>seuil) :
+#   Le pendule fournit naturellement le rappel proportionnel (k=m*g*L=44.1 Nm/rad).
+#   Ajouter KP_ATT actif augmente k_eff=119 Nm/rad mais exige c_crit=47.3 Nm.s/rad
+#   pour amortissement critique, or le controleur n'en fournit que ~30 → zeta=0.71 :
+#   systeme sous-amorti = balancier. Sans P : k_eff=44.1, c_crit=28.8, zeta≈1.17 ✓
+# En stationnaire (|vx|≈0, pas de commande H) : P+D pour retour au niveau.
+KP_ATT = 0.5        # utilise uniquement en stationnaire (pas de poussee horizontale)
+KD_ATT = 0.30       # amortissement actif taux de tangage (hausse 0.20→0.30 pour marge)
 MAX_ATT_CORR = 2.0
 ATT_DEADBAND = 0.01
 # Seuil au-delà duquel la correction est suspendue : laisser l'effet pendule dominer
 ATT_SATURATE = 0.5
+# Seuil vx en-dessous duquel le mode stationnaire (P+D) est actif
+VX_CRUISE_THRESHOLD = 0.01
 
 # --- Anti-dérive : maintien de position horizontale (GPS) ---
 # Activé dès que le pilote relâche les touches avant/arrière
@@ -392,14 +399,23 @@ while robot.step(timestep) != -1:
             corr_roll  = 0.0
             corr_pitch = 0.0
         else:
-            roll_corr_input  = roll  if abs(roll)  > ATT_DEADBAND else 0.0
-            pitch_corr_input = pitch if abs(pitch) > ATT_DEADBAND else 0.0
+            # En croisiere horizontale (pilote pousse ou blimp en mouvement) :
+            #   D-only — amortit le taux de tangage sans combattre l'equilibre naturel
+            #   du pendule. Ajouter le terme P rendrait le systeme sous-amorti (zeta≈0.71)
+            #   et provoquerait le balancier inarretable.
+            # En stationnaire : P+D pour retour au niveau.
+            in_cruise = pilot_wants_h or (abs(vx) > VX_CRUISE_THRESHOLD)
+            if in_cruise:
+                corr_pitch = KD_ATT * dpitch
+            else:
+                pitch_corr_input = pitch if abs(pitch) > ATT_DEADBAND else 0.0
+                corr_pitch = KP_ATT * pitch_corr_input + KD_ATT * dpitch
 
-            corr_roll  = (KP_ATT * roll_corr_input  + KD_ATT * droll)
-            corr_pitch = (KP_ATT * pitch_corr_input + KD_ATT * dpitch)
-
-            corr_roll  = clamp(corr_roll,  -MAX_ATT_CORR, MAX_ATT_CORR)
             corr_pitch = clamp(corr_pitch, -MAX_ATT_CORR, MAX_ATT_CORR)
+
+            # Roll : toujours D-only (les moteurs horizontaux ne créent pas de
+            # couple de roulis — la stabilite roulis est assuree par le pendule)
+            corr_roll = clamp(KD_ATT * droll, -MAX_ATT_CORR, MAX_ATT_CORR)
 
         roll_prev  = roll
         pitch_prev = pitch
