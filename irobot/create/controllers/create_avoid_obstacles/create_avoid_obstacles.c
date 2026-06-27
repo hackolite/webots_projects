@@ -63,7 +63,7 @@ WbDeviceTag left_motor, right_motor, left_position_sensor, right_position_sensor
 /* Misc Stuff */
 #define MAX_SPEED 16
 #define NULL_SPEED 0
-#define HALF_SPEED 8
+#define HALF_SPEED 12
 #define MIN_SPEED -16
 
 #define WHEEL_RADIUS 0.031
