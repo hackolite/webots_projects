@@ -52,7 +52,7 @@ from PIL import Image  # installed via requirements.txt
 
 # ── Constants ────────────────────────────────────────────────────────────────
 API_PORT = 5000
-MAX_SPEED = 8.0          # conservative max speed for goto navigation (m/s * gearing)
+MAX_SPEED = 16.0         # max motor speed (matches robot controller cap)
 GOTO_ARRIVAL_DIST = 0.15  # metres – consider target reached when within this distance
 JPEG_QUALITY = 75        # balance of speed and visual quality for streaming
 
@@ -226,7 +226,7 @@ def _compute_goto_speeds(pos, rot, target):
 
     # Simple proportional: turn harder when facing wrong way
     turn = 4.0 * angle_err
-    forward = min(MAX_SPEED, dist * 3.0) * max(0.0, 1.0 - abs(angle_err) / math.pi)
+    forward = min(MAX_SPEED, dist * 5.0) * max(0.0, 1.0 - abs(angle_err) / math.pi)
 
     sl = forward - turn
     sr = forward + turn
