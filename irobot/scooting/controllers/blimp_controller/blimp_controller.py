@@ -139,7 +139,7 @@ KP_ATT = 0.5
 KD_ATT = 0.20
 MAX_ATT_CORR = 2.0
 ATT_DEADBAND = 0.01
-# Seuil : laisser l'effet pendule dominer aux grands angles
+# Seuil au-delà duquel la correction est suspendue : laisser l'effet pendule dominer
 ATT_SATURATE = 0.5
 
 # --- Anti-dérive : maintien de position horizontale (GPS) ---
@@ -326,8 +326,6 @@ while robot.step(timestep) != -1:
             target_pos_x = pos[0]
             target_pos_y = pos[1]
             pos_hold_active = True
-            vel_est_x = 0.0
-            vel_est_y = 0.0
 
     # Quand le pilote relache le lacet, geler le cap courant
     if not pilot_wants_yaw and imu:
