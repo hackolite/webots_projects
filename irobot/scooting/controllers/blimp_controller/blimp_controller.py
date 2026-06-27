@@ -110,14 +110,14 @@ DRAG_V   = 0.30
 DRAG_YAW = 0.40
 
 # Vitesses max
-# VMAX_H limite : couple piquer = 50*omega*1.5 m ; couple restaurateur pendule = 44*theta
-# A omega=0.12 : equilibre a theta ≈ 0.20 rad (11.7°), bien en dessous de ATT_SATURATE
+# VMAX_H limite : couple piquer = 50*omega*0.8 m ; couple restaurateur pendule = 53*theta
+# A omega=0.12 : equilibre a theta ≈ 0.091 rad (5.2°), bien en dessous de ATT_SATURATE
 VMAX_H   = 0.12
 VMAX_V   = 1.0
 VMAX_YAW = 1.0
 
 # Poussee max pilote
-THRUST_H   = 0.25  # reduit : evite un couple a piquer excessif (moteurs 1.5m au-dessus du CoM)
+THRUST_H   = 0.25  # reduit : evite un couple a piquer excessif (moteurs 0.8m au-dessus du CoM)
 THRUST_V   = 3.0
 THRUST_YAW = 2.0
 
@@ -134,14 +134,14 @@ MOTOR_SCALE_V = 1.0
 HOVER_OMEGA = 0.7
 
 # --- Auto-stab attitude (roll / pitch) ---
-# Strategie D-only en croisiere (pilot_wants_h ou |vx|>seuil) :
-#   Le pendule fournit naturellement le rappel proportionnel (k=m*g*L=44.1 Nm/rad).
-#   Ajouter KP_ATT actif augmente k_eff=119 Nm/rad mais exige c_crit=47.3 Nm.s/rad
-#   pour amortissement critique, or le controleur n'en fournit que ~30 → zeta=0.71 :
-#   systeme sous-amorti = balancier. Sans P : k_eff=44.1, c_crit=28.8, zeta≈1.17 ✓
+# Geometrie : CoM a Z=-1.8 m, moteurs a Z=-1.0 m → bras de levier = 0.8 m
+# Pendule : k = m*g*L = 3*9.81*1.8 = 52.97 Nm/rad
+# Amortissement critique D-only : c_crit = 2*sqrt(k*J) = 2*sqrt(52.97*4.7) = 31.56 Nm.s/rad
+# Amortissement fourni : c_eff = thrustConst * KD_ATT * lever = 50 * 1.0 * 0.8 = 40 Nm.s/rad
+# → zeta = 40 / 31.56 ≈ 1.27 ✓ (suramorti, tangage ultra-stable)
 # En stationnaire (|vx|≈0, pas de commande H) : P+D pour retour au niveau.
 KP_ATT = 0.5        # utilise uniquement en stationnaire (pas de poussee horizontale)
-KD_ATT = 0.30       # amortissement actif taux de tangage (hausse 0.20→0.30 pour marge)
+KD_ATT = 1.0        # amortissement actif taux de tangage (suramorti zeta≈1.27)
 MAX_ATT_CORR = 2.0
 ATT_DEADBAND = 0.01
 # Seuil au-delà duquel la correction est suspendue : laisser l'effet pendule dominer
