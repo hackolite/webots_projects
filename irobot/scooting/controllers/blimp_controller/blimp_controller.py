@@ -113,14 +113,20 @@ DRAG_V   = 0.30
 DRAG_YAW = 0.40
 
 # Vitesses max
-# VMAX_H limite : couple piquer = 50*omega*0.8 m ; couple restaurateur pendule = 53*theta
-# A omega=0.12 : equilibre a theta ≈ 0.091 rad (5.2°), bien en dessous de ATT_SATURATE
-VMAX_H   = 0.12
+# La poussee des helices Webots est QUADRATIQUE : F = thrustConstants[0]*omega^2 = 50*omega^2
+# (et non lineaire). A omega=0.12 la poussee horizontale n'etait que 50*0.12^2 = 0.72 N sur un
+# dirigeable de 3 kg => translation quasi nulle, donc maniabilite tres faible.
+# On releve VMAX_H pour obtenir une poussee utile tout en restant stable :
+#   omega=0.45 => poussee = 50*0.45^2 = 10.1 N (accel ~3.4 m/s^2)
+#   couple a piquer = 10.1*0.8 = 8.1 Nm ; couple restaurateur pendule = 53*sin(theta)
+#   => equilibre a theta ≈ 0.154 rad (8.8°), bien en dessous de ATT_SATURATE (0.5 rad)
+VMAX_H   = 0.45
 VMAX_V   = 1.0
 VMAX_YAW = 1.0
 
 # Poussee max pilote
-THRUST_H   = 0.25  # reduit : evite un couple a piquer excessif (moteurs 0.8m au-dessus du CoM)
+# vx tend vers THRUST_H/DRAG_H en regime etabli => THRUST_H = DRAG_H*VMAX_H = 2.0*0.45 = 0.9
+THRUST_H   = 0.9   # permet d'atteindre VMAX_H tout en gardant le couple a piquer maitrise
 THRUST_V   = 3.0
 THRUST_YAW = 2.0
 
