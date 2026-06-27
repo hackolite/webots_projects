@@ -98,7 +98,7 @@ SMOOTH_YAW = 0.08       # lacet plus vif
 SMOOTH_V   = 0.06       # vertical plus reactif
 
 # Trainee
-# DRAG_H : constante de temps vx = 1/DRAG_H ≈ 0.5s => arret net en ~1.5s apres relachement fleche
+# DRAG_H : constante de temps vx = 1/DRAG_H ≈ 0.5s => arret net en ~1.5s après relachement fleche
 DRAG_H   = 2.0
 DRAG_V   = 0.30
 DRAG_YAW = 0.40
