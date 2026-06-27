@@ -2,16 +2,19 @@
 Controleur Blimp - Navigation inertielle + Auto-stabilisation
 =============================================================
 - Multi-touches : combinaison libre (ex. avant + lacet simultanes)
-- Auto-stab attitude  : correcteur PD sur roll/pitch via IMU
+- Anti-pique     : correcteur PD pitch renforcé (KP/KD plus élevés)
+- Anti-dérive    : maintien de position GPS (hold XY) quand aucune commande
+                   horizontale — correction PD vitesse + position en axe avant
 - Auto-stab altitude  : maintien de la hauteur GPS si aucune commande verticale
 - Maintien de cap     : PD yaw quand aucune commande de lacet
 - Smoothing des commandes pilote
 - Amortissement angulaire via Gyro
+- Log inertiels complets : position GPS, vitesse estimée, RPY, gyro XYZ, accél XYZ
 
 Controles UNIVERSELS (Évite les bugs AZERTY) :
   FLECHES   : avant / arriere / lacet gauche / droite  (combinables !)
   A / E    : monter / descendre  (desactive l'autostab altitude)
-  ESPACE   : stop moteurs + gel altitude et cap
+  ESPACE   : stop moteurs + gel altitude, cap ET position
   R        : frein urgence
 """
 
@@ -127,15 +130,25 @@ MOTOR_SCALE_V = 1.0
 # ou sqrt(m*g/50) = 0.767 rad/s (quadratique). On utilise 0.7 comme valeur intermédiaire.
 HOVER_OMEGA = 0.7
 
-# --- Auto-stab attitude (roll / pitch) ---
-# KP_ATT reduit : evite l'inversion des moteurs (inversion si pitch > VMAX_H/KP_ATT)
-# Avec KP_ATT=0.3 et VMAX_H=0.12 : inversion seulement a partir de 22.9° (>> equilibre ~12°)
-KP_ATT = 0.3
-KD_ATT = 0.10
+# --- Auto-stab attitude (roll / pitch) — anti-pique renforcé ---
+# KP_ATT : inversion moteurs si pitch > VMAX_H/KP_ATT
+#   KP_ATT=0.5 → inversion à 13.7° (>> équilibre croisière ~6.3°)
+#   Équilibre théorique : pitch_eq = 75*VMAX_H / (44 + 75*KP_ATT)
+#   KP=0.3 → 7.7°  |  KP=0.5 → 6.3°  (pendule = 44 Nm/rad, moteurs à 1.5 m)
+KP_ATT = 0.5
+KD_ATT = 0.20
 MAX_ATT_CORR = 2.0
-ATT_DEADBAND = 0.02
-# Seuil reduit : laisser l'effet pendule dominer aux grands angles plutot que de corriger
+ATT_DEADBAND = 0.01
+# Seuil au-delà duquel la correction est suspendue : laisser l'effet pendule dominer
 ATT_SATURATE = 0.5
+
+# --- Anti-dérive : maintien de position horizontale (GPS) ---
+# Activé dès que le pilote relâche les touches avant/arrière
+# Correction PD en axe avant (body frame) : position + vitesse estimée GPS
+KP_POS      = 0.15   # proportionnel position (rad/s / m)
+KD_VEL_HOLD = 1.0    # dérivé vitesse (rad/s / m·s⁻¹)
+MAX_POS_CORR = 0.08  # limite ≈ 67 % de VMAX_H
+VEL_SMOOTH   = 0.25  # lissage passe-bas vitesse GPS (0=figé, 1=instantané)
 
 # --- Auto-stab altitude ---
 KP_ALT = 0.4
@@ -189,6 +202,15 @@ target_heading   = None
 yaw_hold_active  = False
 heading_err_prev = 0.0
 
+# Anti-dérive : maintien de position horizontale
+target_pos_x   = None
+target_pos_y   = None
+pos_hold_active = False
+prev_pos_x     = None
+prev_pos_y     = None
+vel_est_x      = 0.0   # vitesse monde estimée (m/s), filtrée
+vel_est_y      = 0.0
+
 log_timer = 0.0
 
 def smooth(current, target, rate):
@@ -220,6 +242,7 @@ while robot.step(timestep) != -1:
         yaw   = rpy[2]
 
     yaw_rate = 0.0
+    gyro_vals = [0.0, 0.0, 0.0]
     if gyro:
         gyro_vals = gyro.getValues()
         yaw_rate = gyro_vals[2]  # vitesse angulaire axe Z (lacet)
@@ -237,6 +260,15 @@ while robot.step(timestep) != -1:
             target_altitude = altitude
             print(f"[AUTOSTAB] Altitude cible initiale : {target_altitude:.2f} m")
 
+        # Estimation vitesse horizontale monde (passe-bas) pour l'anti-dérive
+        if prev_pos_x is not None:
+            raw_vx = (pos[0] - prev_pos_x) / dt
+            raw_vy = (pos[1] - prev_pos_y) / dt
+            vel_est_x = smooth(vel_est_x, raw_vx, VEL_SMOOTH)
+            vel_est_y = smooth(vel_est_y, raw_vy, VEL_SMOOTH)
+        prev_pos_x = pos[0]
+        prev_pos_y = pos[1]
+
     # --------------------------------------------------------
     # 2. Commandes pilote - lecture MULTI-TOUCHES simultanees
     # --------------------------------------------------------
@@ -252,11 +284,14 @@ while robot.step(timestep) != -1:
     braking    = False
     pilot_wants_alt = False
     pilot_wants_yaw = False
+    pilot_wants_h   = False
 
     if Keyboard.UP in keys:
         target_x = THRUST_H
+        pilot_wants_h = True
     elif Keyboard.DOWN in keys:
         target_x = -THRUST_H
+        pilot_wants_h = True
 
     if Keyboard.LEFT in keys:
         target_yaw = THRUST_YAW
@@ -287,6 +322,10 @@ while robot.step(timestep) != -1:
         if imu:
             target_heading = yaw
             heading_err_prev = 0.0
+        if gps:
+            target_pos_x = pos[0]
+            target_pos_y = pos[1]
+            pos_hold_active = True
 
     # Quand le pilote relache le lacet, geler le cap courant
     if not pilot_wants_yaw and imu:
@@ -296,6 +335,15 @@ while robot.step(timestep) != -1:
             yaw_hold_active = True
     else:
         yaw_hold_active = False
+
+    # Anti-dérive : capturer la position GPS dès que la touche avant/arrière est relâchée
+    if not pilot_wants_h and gps and prev_pos_x is not None:
+        if not pos_hold_active:
+            target_pos_x = pos[0]
+            target_pos_y = pos[1]
+            pos_hold_active = True
+    elif pilot_wants_h:
+        pos_hold_active = False
 
     # --------------------------------------------------------
     # 3. Smoothing commandes
@@ -389,6 +437,25 @@ while robot.step(timestep) != -1:
         heading_err_prev = heading_err
 
     # --------------------------------------------------------
+    # 7b. Anti-dérive : maintien de position horizontale (GPS)
+    # --------------------------------------------------------
+    corr_pos = 0.0
+
+    if pos_hold_active and gps and target_pos_x is not None:
+        # Erreur position monde → projection sur l'axe avant du blimp (body frame)
+        err_world_x = target_pos_x - pos[0]
+        err_world_y = target_pos_y - pos[1]
+        err_fwd = err_world_x * math.cos(yaw) + err_world_y * math.sin(yaw)
+
+        # Vitesse avant estimée (body frame)
+        vel_fwd = vel_est_x * math.cos(yaw) + vel_est_y * math.sin(yaw)
+
+        corr_pos = clamp(
+            KP_POS * err_fwd - KD_VEL_HOLD * vel_fwd,
+            -MAX_POS_CORR, MAX_POS_CORR
+        )
+
+    # --------------------------------------------------------
     # 8. Amortissement lacet via Gyro
     # --------------------------------------------------------
     yaw_damp = clamp(-KD_YAW_GYRO * yaw_rate, -MAX_ATT_CORR, MAX_ATT_CORR)
@@ -396,8 +463,8 @@ while robot.step(timestep) != -1:
     # --------------------------------------------------------
     # 9. Commandes moteurs finales (bridées sous 10)
     # --------------------------------------------------------
-    base1 = (vx + vyaw + yaw_damp + corr_yaw_hold) * MOTOR_SCALE_H
-    base2 = (vx - vyaw - yaw_damp - corr_yaw_hold) * MOTOR_SCALE_H
+    base1 = (vx + corr_pos + vyaw + yaw_damp + corr_yaw_hold) * MOTOR_SCALE_H
+    base2 = (vx + corr_pos - vyaw - yaw_damp - corr_yaw_hold) * MOTOR_SCALE_H
 
     # corr_pitch en mode commun : reduit/augmente la poussee des deux moteurs egalement
     # => couple a piquer negatif/positif qui compense l'inclinaison (correct physiquement)
@@ -436,15 +503,23 @@ while robot.step(timestep) != -1:
         elif target_z < -0.01: cmd_str = "DESCEND "
         else:                   cmd_str = "STOP    "
 
-        pos_str = f"x={pos[0]:.1f} y={pos[1]:.1f} z={altitude:.1f}" if (gps and altitude is not None) else "GPS N/A"
+        pos_str = f"x={pos[0]:.2f} y={pos[1]:.2f} z={altitude:.2f}" if (gps and altitude is not None) else "GPS N/A"
+        vel_str = f"vx={vel_est_x:.2f} vy={vel_est_y:.2f}" if gps else "vel N/A"
         alt_err = (target_altitude - altitude) if (target_altitude is not None and altitude is not None) else 0.0
         hdg_err = (target_heading - yaw + math.pi) % (2 * math.pi) - math.pi if (target_heading is not None and imu) else 0.0
+        pos_err_fwd = 0.0
+        if pos_hold_active and gps and target_pos_x is not None:
+            pos_err_fwd = (target_pos_x - pos[0]) * math.cos(yaw) + (target_pos_y - pos[1]) * math.sin(yaw)
 
-        print(f"[NAV] {pos_str} | cmd={cmd_str}"
-              f"| vx={vx:.2f} vz={vz:.2f} vyaw={vyaw:.3f}"
-              f"| roll={math.degrees(roll):.1f}° pitch={math.degrees(pitch):.1f}°"
-              f"| yaw_rate={math.degrees(yaw_rate):.1f}°/s"
-              f"| alt_err={alt_err:.2f}m corr_alt={corr_alt:.2f}"
-              f"| hdg_err={math.degrees(hdg_err):.1f}° corr_yaw={corr_yaw_hold:.2f}"
-              f"| accel=[{accel_vals[0]:.2f},{accel_vals[1]:.2f},{accel_vals[2]:.2f}]")
+        print(
+            f"[NAV]  cmd={cmd_str} | {pos_str} | {vel_str}\n"
+            f"       vx_cmd={vx:.3f} vz_cmd={vz:.3f} vyaw={vyaw:.3f}\n"
+            f"[IMU]  roll={math.degrees(roll):.2f}° pitch={math.degrees(pitch):.2f}° yaw={math.degrees(yaw):.2f}°\n"
+            f"[GYRO] wx={math.degrees(gyro_vals[0]):.2f}°/s wy={math.degrees(gyro_vals[1]):.2f}°/s wz={math.degrees(yaw_rate):.2f}°/s\n"
+            f"[ACCEL]ax={accel_vals[0]:.3f} ay={accel_vals[1]:.3f} az={accel_vals[2]:.3f} m/s²\n"
+            f"[CORR] alt_err={alt_err:.3f}m corr_alt={corr_alt:.3f}"
+            f" | hdg_err={math.degrees(hdg_err):.2f}° corr_yaw={corr_yaw_hold:.3f}"
+            f" | pos_err_fwd={pos_err_fwd:.3f}m corr_pos={corr_pos:.3f}"
+            f" | corr_pitch={corr_pitch:.3f}"
+        )
 
