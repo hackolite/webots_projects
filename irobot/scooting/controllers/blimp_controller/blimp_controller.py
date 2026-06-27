@@ -98,17 +98,20 @@ SMOOTH_YAW = 0.08       # lacet plus vif
 SMOOTH_V   = 0.06       # vertical plus reactif
 
 # Trainee
-DRAG_H   = 0.08   # legere trainee => arret plus net sans perdre l'inertie du blimp
+# DRAG_H eleve : constante de temps vx = 1/DRAG_H/dt ≈ 2.5s => arret net apres relachement fleche
+DRAG_H   = 0.40
 DRAG_V   = 0.30
 DRAG_YAW = 0.40
 
 # Vitesses max
-VMAX_H   = 0.3   # limite : couple a piquer = 150*omega vs couple restaurant = 44*theta
+# VMAX_H limite : couple piquer = 50*omega*1.5 m ; couple restaurant pendule = 44*theta
+# A omega=0.12 : equilibre a theta ≈ 0.20 rad (11.7°), bien en dessous de ATT_SATURATE
+VMAX_H   = 0.12
 VMAX_V   = 1.0
 VMAX_YAW = 1.0
 
 # Poussee max pilote
-THRUST_H   = 0.5   # reduit : evite un couple a piquer excessif (moteurs 1.5m au-dessus du CoM)
+THRUST_H   = 0.25  # reduit : evite un couple a piquer excessif (moteurs 1.5m au-dessus du CoM)
 THRUST_V   = 3.0
 THRUST_YAW = 2.0
 
@@ -125,11 +128,14 @@ MOTOR_SCALE_V = 1.0
 HOVER_OMEGA = 0.7
 
 # --- Auto-stab attitude (roll / pitch) ---
-KP_ATT = 2.0
-KD_ATT = 0.6
-MAX_ATT_CORR = 4.0
+# KP_ATT reduit : evite l'inversion des moteurs (inversion si pitch > VMAX_H/KP_ATT)
+# Avec KP_ATT=0.3 et VMAX_H=0.12 : inversion seulement a partir de 22.9° (>> equilibre ~12°)
+KP_ATT = 0.3
+KD_ATT = 0.10
+MAX_ATT_CORR = 2.0
 ATT_DEADBAND = 0.02
-ATT_SATURATE = 0.8
+# Seuil reduit : laisser l'effet pendule dominer aux grands angles plutot que de corriger
+ATT_SATURATE = 0.5
 
 # --- Auto-stab altitude ---
 KP_ALT = 0.4
