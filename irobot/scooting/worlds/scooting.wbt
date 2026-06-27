@@ -1,0 +1,139 @@
+#VRML_SIM R2025a utf8
+
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackground.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackgroundLight.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/floors/protos/Floor.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/buildings/protos/ModernHouse.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/robots/pal_robotics/tiago_lite/protos/TiagoLite.proto"
+EXTERNPROTO "../protos/Blimp.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/buildings/protos/BungalowStyleHouse.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/buildings/protos/LargeResidentialTower.proto"
+
+WorldInfo {
+}
+Viewpoint {
+  orientation -0.5773502691896258 0.5773502691896258 0.5773502691896258 2.0944
+  position 1719.7469106588374 1459.7340647343829 513912591.2413804
+  follow "TIAGo LITE"
+}
+TexturedBackground {
+}
+TexturedBackgroundLight {
+}
+Floor {
+  size 100 100
+}
+BungalowStyleHouse {
+  translation -35 0 0
+}
+BungalowStyleHouse {
+  translation -34 -23 0
+  name "bungalow style house(1)"
+}
+BungalowStyleHouse {
+  translation -35 19 0
+  name "bungalow style house(2)"
+}
+BungalowStyleHouse {
+  translation -35 36 0
+  name "bungalow style house(3)"
+}
+TiagoLite {
+  hidden position_0_0 4571.095097178913
+  hidden position_0_1 4572.01576609857
+  hidden position_0_2 194.7787419800485
+  hidden position_0_3 -25.13274366365991
+  hidden position_0_4 -131.94689243799758
+  hidden position_0_5 100.53096448730818
+  hidden linearVelocity_0 0.23643719566488114 -0.06882234480266976 -2.3961059559610714e-11
+  hidden angularVelocity_0 -3.3071247180883954e-07 9.695950879609419e-08 -3.639091205350375e-07
+  hidden position_1_0 -8.245707207886886e-05
+  hidden translation_2 0 0 0.5999175429279211
+  hidden position_2_0 2.253769276062847e-06
+  hidden linearVelocity_2 0.23643724106701752 -0.06882218986008996 -5.708301212248245e-12
+  hidden angularVelocity_2 -3.307285555800515e-07 9.69663308224576e-08 -3.6397114035747903e-07
+  hidden rotation_3 0 0 0.9999999999999999 2.253772921628431e-06
+  hidden position_3_0 -1.0007552476767732e-05
+  hidden linearVelocity_3 0.2364372575932542 -0.06882213372670413 -1.259500159232279e-10
+  hidden angularVelocity_3 -3.30546664126431e-07 9.700413148983199e-08 6.392179127295363e-06
+  hidden rotation_4 0.9999999999749623 5.003757858437691e-06 -5.0037762383003476e-06 1.5708000000250366
+  hidden linearVelocity_4 0.23643732711559254 -0.06882184917581721 -8.494488811325576e-10
+  hidden angularVelocity_4 -3.3053769589350975e-07 9.700186499012015e-08 6.3921496083868185e-06
+  hidden translation_13 -6.262877294860303e-05 4.4614384364649595e-07 0.028212294212862657
+  hidden rotation_13 0.04425452846614704 -0.9990189770107128 -0.001618728731964658 1.2675054840050461e-06
+  hidden linearVelocity_13 0.23643718509577794 -0.06882238088421866 -3.2424637586696136e-11
+  hidden angularVelocity_13 -3.3071267345109267e-07 9.695956097014874e-08 -3.639094231827726e-07
+  hidden rotation_17 0.02750509256572653 -0.7068379586074718 0.7068405549730241 3.0865965363626997
+  hidden linearVelocity_17 0.23643715153115102 -0.06882223169243831 6.823867149744038e-08
+  hidden angularVelocity_17 0.6987025357906603 2.4003780322129935 -3.208723343851393e-05
+  hidden rotation_18 0.3597678688070331 -0.659759002516303 0.6597614259508797 2.450894860094038
+  hidden linearVelocity_18 0.2364373028902331 -0.06882223961680745 -6.83014145210275e-08
+  hidden angularVelocity_18 0.6987025050221002 2.4003780708634403 -3.219371817813735e-05
+  hidden rotation_19 0 0 1 6.283182764707848
+  hidden position_19_0 41468.540688215086
+  hidden linearVelocity_19 0.2364371196992141 -0.06882247342247909 3.429139955254556e-08
+  hidden angularVelocity_19 -3.351094969942333e-07 9.825367777880212e-08 -2.187570096101357e-05
+  hidden rotation_20 -0.9444942896917288 -0.23230383153180964 -0.23230468483299524 1.6278746197831366
+  hidden linearVelocity_20 0.23643717904505923 -0.06882227266731712 3.3632205371198645e-08
+  hidden angularVelocity_20 2.75289158927757 9.457486961964909 -0.00014726608440086575
+  hidden rotation_21 0 0 -0.9999999999999999 2.4348698017551305e-06
+  hidden position_21_0 41456.994739411246
+  hidden linearVelocity_21 0.2364371683746765 -0.06882257139727249 -3.448706010829062e-08
+  hidden angularVelocity_21 -3.380212372331394e-07 9.916723069631959e-08 -9.50834264170451e-06
+  hidden rotation_22 -0.9316750043891838 0.2568863575597339 0.2568873011577387 1.6415122204499075
+  hidden linearVelocity_22 0.2364371709634629 -0.06882256428591732 -3.379878711377219e-08
+  hidden angularVelocity_22 2.7529060175939817 9.457485834485885 -0.00013557224287033738
+  hidden rotation_23 0 0 1 6.283184320097155
+  hidden position_23_0 41085.38078360495
+  hidden linearVelocity_23 0.23643714470192398 -0.06882238682998332 3.441888844723032e-08
+  hidden angularVelocity_23 -3.3835460853742366e-07 9.889540757709482e-08 -2.612733263015072e-05
+  hidden rotation_24 0.9670769195763366 0.17994720578239923 0.17994786676660188 4.678914318474281
+  hidden linearVelocity_24 0.2364372059201327 -0.06882217737283405 3.375061386491382e-08
+  hidden angularVelocity_24 2.7528875106612634 9.457488114564509 -0.00015192796143753868
+  hidden rotation_25 0 0 -0.9999999999999999 4.2774379534743284e-07
+  hidden position_25_0 41103.76228372531
+  hidden linearVelocity_25 0.23643723227779204 -0.06882235176394257 -3.4368158276974445e-08
+  hidden angularVelocity_25 -3.3523311816862594e-07 9.806546958764511e-08 -2.744558795738896e-05
+  hidden rotation_26 -0.8467954634684688 -0.37612258890019284 -0.37612397047813556 1.7363348340786096
+  hidden linearVelocity_26 0.23643731388726627 -0.06882207281713282 -3.368657788984557e-08
+  hidden angularVelocity_26 2.752881395310305 9.457492995945525 -0.00015273904770430794
+  translation -14.127930082834984 -43.448521707747766 0.09089747455661903
+  rotation -3.536230757798691e-05 7.097434358551208e-05 -0.9999999968560749 0.2832536677073967
+}
+ModernHouse {
+  translation 26 41 0
+}
+ModernHouse {
+  translation 26 16 0
+  name "modern house(1)"
+}
+ModernHouse {
+  translation 26 -10 0
+  name "modern house(2)"
+}
+ModernHouse {
+  translation 26 -31 0
+  name "modern house(3)"
+}
+Blimp {
+  hidden linearVelocity_0 -209.72949840488627 -1289.7930706970521 6491885.600113244
+  hidden angularVelocity_0 -8812.273034718672 2047.2186641912435 -4260.60320876718
+  translation -6226869.93668259 -1543090.9278288763 565722060.3851871
+  rotation -0.30501893226138266 -0.2650424666602986 0.9147217838385345 1.4344765088826745
+  controller "blimp_controller"
+}
+LargeResidentialTower {
+  translation -5 13 0
+}
+LargeResidentialTower {
+  translation -5 37 0
+  name "residential tower(3)"
+}
+LargeResidentialTower {
+  translation -5 -13 0
+  name "residential tower(1)"
+}
+LargeResidentialTower {
+  translation -5 -37 0
+  name "residential tower(2)"
+}

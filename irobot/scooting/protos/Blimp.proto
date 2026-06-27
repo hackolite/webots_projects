@@ -1,0 +1,404 @@
+#VRML_SIM R2025a utf8
+# license: Copyright Cyberbotics Ltd. Licensed for use only with Webots.
+# license url: https://cyberbotics.com/webots_assets_license
+# documentation url: https://webots.cloud/run?url=https://github.com/cyberbotics/webots/blob/released/projects/robots/epfl/lis/protos/Blimp.proto
+# keywords: robot/flying
+# The "Blimp" robot is a Zeppelin-like aerial robot developed by the EPFL LIS laboratory.
+# Modified: scaled to van size (~5.2m long, ~2m diameter)
+
+PROTO Blimp [
+  field SFVec3f    translation     0 0 1.5
+  field SFRotation rotation        0 0 1 0
+  field SFString   name            "Blimp"
+  field SFString   controller      "<generic>"
+  field MFString   controllerArgs  []
+  field SFString   window          "<generic>"
+  field SFString   customData      ""
+  field SFBool     supervisor      FALSE
+  field SFBool     synchronization TRUE
+  field MFNode     extensionSlot   []
+]
+{
+  Robot {
+    translation IS translation
+    rotation IS rotation
+
+    children [
+
+      Group {
+        children IS extensionSlot
+      }
+
+      DEF emitter Emitter {
+        model "radio"
+        bufferSize 1000
+      }
+
+      Receiver {
+        bufferSize 1000
+      }
+
+      # DS0
+      DEF DS0 DistanceSensor {
+        translation 2.1 0 0
+        name "ds0"
+        lookupTable [
+          0 255 0
+          1.0 0 0
+        ]
+      }
+
+      # DS6
+      DEF DS6 DistanceSensor {
+        translation 0 1.0 0
+        rotation 0 0 1 1.57
+        name "ds6"
+        lookupTable [
+          0 255 0
+          1.0 0 0
+        ]
+      }
+
+      DEF SUPPORT Pose {
+        children [
+          DEF Support1 Pose {
+            translation 0 0 -1.27
+            rotation 0 1 0 1.5707
+            children [
+              Shape {
+                appearance PBRAppearance {
+                  metalness 0
+                  roughness 0.6
+                }
+                geometry Cylinder {
+                  bottom FALSE
+                  height 3.85
+                  radius 0.008
+                }
+              }
+            ]
+          }
+
+          DEF Support2 Pose {
+            translation -1.89 0 -0.69
+            children [
+              Shape {
+                appearance PBRAppearance {
+                  metalness 0
+                  roughness 0.6
+                }
+                geometry Cylinder {
+                  bottom FALSE
+                  height 1.15
+                  radius 0.004
+                }
+              }
+            ]
+          }
+
+          DEF Support3 Pose {
+            translation 0.04 0 -1.31
+            children [
+              Shape {
+                appearance PBRAppearance {
+                  metalness 0
+                  roughness 0.6
+                }
+                geometry Cylinder {
+                  bottom FALSE
+                  height 0.077
+                  radius 0.004
+                }
+              }
+            ]
+          }
+
+          DEF Support4 Pose {
+            translation -1.89 0.019 -0.77
+            rotation 1 0 0 1.57
+            children [
+              Shape {
+                appearance PBRAppearance {
+                  metalness 0
+                  roughness 0.6
+                }
+                geometry Cylinder {
+                  bottom FALSE
+                  height 0.038
+                  radius 0.004
+                }
+              }
+            ]
+          }
+
+          DEF Support5 Pose {
+            translation 1.85 0.27 -0.69
+            rotation 1 0 0 -0.25
+            children [
+              Shape {
+                appearance PBRAppearance {
+                  metalness 0
+                  roughness 0.6
+                }
+                geometry Cylinder {
+                  bottom FALSE
+                  height 1.19
+                  radius 0.004
+                }
+              }
+            ]
+          }
+
+          DEF Support6 Pose {
+            translation 1.85 -0.27 -0.69
+            rotation 1 0 0 0.25
+            children [
+              Shape {
+                appearance PBRAppearance {
+                  metalness 0
+                  roughness 0.6
+                }
+                geometry Cylinder {
+                  bottom FALSE
+                  height 1.19
+                  radius 0.004
+                }
+              }
+            ]
+          }
+
+          DEF Support7 Pose {
+            translation 1.85 0 -1.27
+            rotation 1 0 0 1.57
+            children [
+              Shape {
+                appearance PBRAppearance {
+                  metalness 0
+                  roughness 0.6
+                }
+                geometry Cylinder {
+                  bottom FALSE
+                  height 0.25
+                  radius 0.004
+                }
+              }
+            ]
+          }
+
+          DEF Support8 Pose {
+            translation 1.85 0 -1.0
+            rotation 1 0 0 1.57
+            children [
+              Shape {
+                appearance PBRAppearance {
+                  metalness 0
+                  roughness 0.6
+                }
+                geometry Cylinder {
+                  bottom FALSE
+                  height 0.385
+                  radius 0.004
+                }
+              }
+            ]
+          }
+
+          DEF Support9 Pose {
+            translation 1.905 0 -1.0
+            rotation 0 1 0 1.57
+            children [
+              Shape {
+                appearance PBRAppearance {
+                  metalness 0
+                  roughness 0.6
+                }
+                geometry Cylinder {
+                  bottom FALSE
+                  height 0.115
+                  radius 0.004
+                }
+              }
+            ]
+          }
+
+          DEF Support10 Pose {
+            translation 1.468 0 -1.408
+            rotation 0 0 1 1.57
+            children [
+              Pose {
+                rotation 1 0 0 -0.2
+                children [
+                  Shape {
+                    appearance PBRAppearance {
+                      metalness 0
+                      roughness 0.6
+                    }
+                    geometry Cylinder {
+                      bottom FALSE
+                      height 0.269
+                      radius 0.004
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+
+          DEF Support11 Pose {
+            translation 1.54 0 -1.54
+            rotation 0 1 0 1.57
+            children [
+              Shape {
+                appearance PBRAppearance {
+                  metalness 0
+                  roughness 0.6
+                }
+                geometry Cylinder {
+                  bottom FALSE
+                  height 0.096
+                  radius 0.004
+                }
+              }
+            ]
+          }
+        ]
+      }
+
+      DEF PROCESSOR Pose {
+        translation 0.54 0 -1.296
+        children [
+          Shape {
+            appearance PBRAppearance {
+              metalness 0
+              roughness 0.6
+            }
+            geometry Box {
+              size 0.192 0.192 0.038
+            }
+          }
+        ]
+      }
+
+      DEF BATTERY Pose {
+        translation -0.69 0 -1.296
+        children [
+          Shape {
+            appearance PBRAppearance {
+              metalness 0
+              roughness 0.6
+            }
+            geometry Box {
+              size 0.192 0.096 0.038
+            }
+          }
+        ]
+      }
+
+      DEF CAMERA Camera {
+        translation 0 0 -1.5
+        rotation 1 0 0 3.1416
+        name "camera"
+        fieldOfView 1.0
+        width 320
+        height 240
+        near 0.01
+        far 200
+      }
+
+      DEF ENVELOP Transform {
+        rotation 1 0 0 3.14159
+        scale 2.1 1 1
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.929412 0.929412 0.929412
+              metalness 0
+              roughness 0.9
+            }
+            geometry Sphere {
+              radius 1.0
+              subdivision 3
+            }
+          }
+        ]
+      }
+
+      # =========================
+      # CAPTEURS AJOUTÉS
+      # =========================
+
+      GPS {
+        name "gps"
+      }
+
+      InertialUnit {
+        name "inertial unit"
+      }
+
+      Accelerometer {
+        name "accelerometer"
+      }
+
+      Gyro {
+        name "gyro"
+      }
+
+      # =========================
+      # PROPULSEURS (inchangés)
+      # =========================
+
+      Propeller {
+        shaftAxis 1 0 0
+        centerOfThrust 1.96 0 0
+        thrustConstants 50 0
+        torqueConstants 1 0
+        device RotationalMotor {
+          name "motor1"
+          maxTorque 500
+        }
+      }
+
+      Propeller {
+        shaftAxis 1 0 0
+        centerOfThrust -1.885 0 0
+        thrustConstants 50 0
+        torqueConstants 1 0
+        device RotationalMotor {
+          name "motor2"
+          maxTorque 500
+        }
+      }
+
+      Propeller {
+        shaftAxis 0 0 1
+        centerOfThrust 0 0 0
+        thrustConstants 50 0
+        torqueConstants 1 0
+        device RotationalMotor {
+          name "motor3"
+          maxTorque 500
+        }
+      }
+    ]
+
+    name IS name
+    model "LIS Blimp Van-Scale"
+
+    physics Physics {
+      density -1
+      mass 3.0
+      centerOfMass [0 0 -1.5]
+      inertiaMatrix [
+        0.6 4.7 4.7
+        0 0 0
+      ]
+    }
+
+    controller IS controller
+    controllerArgs IS controllerArgs
+    window IS window
+    customData IS customData
+    supervisor IS supervisor
+    synchronization IS synchronization
+  }
+}

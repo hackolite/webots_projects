@@ -111,9 +111,9 @@ def main():
     # ─────────────────────────────
     # LI DAR (IMPORTANT)
     # ─────────────────────────────
-    lidar = safe_device(robot, "lidar")
-    if lidar:
-        lidar.enable(timestep)
+    #infrared = safe_device(robot, "front_sensor")
+    #if infrared:
+    #    infrared.enable(timestep)
 
     # ─────────────────────────────
     # GPS / ORIENTATION / IMU
@@ -123,13 +123,15 @@ def main():
     imu = robot.getDevice("inertial_unit")
     gyro = robot.getDevice("gyro")
     accel = robot.getDevice("accelerometer")
+    infrared = robot.getDevice("front_sensor") 
 
     gps.enable(timestep)
     compass.enable(timestep)
     imu.enable(timestep)
     gyro.enable(timestep)
     accel.enable(timestep)
-
+    infrared.enable(timestep)
+    
     # ─────────────────────────────
     # OUTPUT FILE
     # ─────────────────────────────
@@ -182,6 +184,7 @@ def main():
             # dynamics
             "gyro": gyro.getValues(),
             "accel": accel.getValues(),
+            "infrared" : infrared.getValue()
 
             # lidar (NEW)
             #"lidar": lidar.getRangeImage() if lidar else None,
