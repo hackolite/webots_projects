@@ -6,12 +6,15 @@ Controleur Blimp - Navigation inertielle + Auto-stabilisation
                    (le terme P est desactive pendant la poussee horizontale :
                     le pendule fournit deja le rappel naturel, le P augmenterait
                     la raideur sans amortissement suffisant → balancier sous-amorti)
+                   KD_ATT_CRUISE << KD_ATT : evite l'inversion des moteurs quand
+                   corr_pitch depasse vx, ce qui creerait une retroaction positive
+                   amplifiant le tangage (oscillation croissante)
 - Anti-dérive    : maintien de position GPS (hold XY) quand aucune commande
                    horizontale — correction PD vitesse + position en axe avant
 - Auto-stab altitude  : maintien de la hauteur GPS si aucune commande verticale
 - Maintien de cap     : PD yaw quand aucune commande de lacet
 - Smoothing des commandes pilote
-- Amortissement angulaire via Gyro (D-only pitch en croisiere = SOTA blimp control)
+- Amortissement angulaire via Gyro (D-only pitch en croisiere, gain adaptatif)
 - Log inertiels complets : position GPS, vitesse estimée, RPY, gyro XYZ, accél XYZ
 
 Controles UNIVERSELS (Évite les bugs AZERTY) :
@@ -137,11 +140,19 @@ HOVER_OMEGA = 0.7
 # Geometrie : CoM a Z=-1.8 m, moteurs a Z=-1.0 m → bras de levier = 0.8 m
 # Pendule : k = m*g*L = 3*9.81*1.8 = 52.97 Nm/rad
 # Amortissement critique D-only : c_crit = 2*sqrt(k*J) = 2*sqrt(52.97*4.7) = 31.56 Nm.s/rad
-# Amortissement fourni : c_eff = thrustConst * KD_ATT * lever = 50 * 1.0 * 0.8 = 40 Nm.s/rad
-# → zeta = 40 / 31.56 ≈ 1.27 ✓ (suramorti, tangage ultra-stable)
-# En stationnaire (|vx|≈0, pas de commande H) : P+D pour retour au niveau.
-KP_ATT = 0.5        # utilise uniquement en stationnaire (pas de poussee horizontale)
-KD_ATT = 1.0        # amortissement actif taux de tangage (suramorti zeta≈1.27)
+# c_eff (2 moteurs) = 2 * thrustConst * KD_ATT * lever = 2*50*KD_ATT*0.8 = 80*KD_ATT
+#
+# Stationnaire (|vx|≈0) : P+D. KD_ATT=1.0 → c_eff=80 → zeta=2.54 (suramorti) ✓
+# Croisiere : D-only avec KD_ATT_CRUISE.
+#   Probleme si KD_ATT trop grand en croisiere : corr_pitch = KD_ATT * dpitch peut
+#   depasser vx (≈0.12) et INVERSER les moteurs. L'inversion genere une poussee
+#   arriere + couple cabrage oppose, puis les moteurs repartent en avant → boucle
+#   de retroaction positive qui AMPLIFIE le tangage.
+#   Solution : KD_ATT_CRUISE << KD_ATT, plus verrou adaptatif sur |corr_pitch| ≤ 0.9*|vx|.
+#   KD_ATT_CRUISE=0.35 → c_eff=28 → zeta≈1.0 (critique) sans saturer pour |dpitch|<0.34 rad/s
+KP_ATT = 0.5           # utilise uniquement en stationnaire (pas de poussee horizontale)
+KD_ATT = 1.0           # amortissement stationnaire (zeta≈2.54, suramorti)
+KD_ATT_CRUISE = 0.35   # amortissement croisiere (zeta≈1.0, sans inversion moteur)
 MAX_ATT_CORR = 2.0
 ATT_DEADBAND = 0.01
 # Seuil au-delà duquel la correction est suspendue : laisser l'effet pendule dominer
@@ -417,10 +428,13 @@ while robot.step(timestep) != -1:
                 in_cruise_pitch = False
 
             if in_cruise_pitch:
-                # D-only : amortit le taux de tangage sans combattre l'equilibre
-                # naturel du pendule. Bande morte gyro pour filtrer le bruit capteur.
+                # D-only avec gain reduit : evite que corr_pitch > vx inverse les moteurs.
+                # Verrou adaptatif supplementaire : |corr_pitch| ≤ 0.9*|vx| garantit
+                # que omega1/omega2 ne changent jamais de signe sous l'effet du pitch.
                 dpitch_filtered = dpitch if abs(dpitch) > DPITCH_DEADBAND else 0.0
-                corr_pitch = KD_ATT * dpitch_filtered
+                max_cruise_corr = clamp(abs(vx) * 0.9, 0.0, MAX_ATT_CORR)
+                corr_pitch = clamp(KD_ATT_CRUISE * dpitch_filtered,
+                                   -max_cruise_corr, max_cruise_corr)
             else:
                 pitch_corr_input = pitch if abs(pitch) > ATT_DEADBAND else 0.0
                 corr_pitch = KP_ATT * pitch_corr_input + KD_ATT * dpitch
