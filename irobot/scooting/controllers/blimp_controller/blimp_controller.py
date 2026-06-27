@@ -1,15 +1,17 @@
 """
 Controleur Blimp - Navigation inertielle + Auto-stabilisation
 =============================================================
-- Auto-stab attitude : correcteur PD sur roll/pitch via IMU
-- Auto-stab altitude : maintien de la hauteur GPS si aucune commande verticale
+- Multi-touches : combinaison libre (ex. avant + lacet simultanes)
+- Auto-stab attitude  : correcteur PD sur roll/pitch via IMU
+- Auto-stab altitude  : maintien de la hauteur GPS si aucune commande verticale
+- Maintien de cap     : PID yaw quand aucune commande de lacet
 - Smoothing des commandes pilote
 - Amortissement angulaire via Gyro
 
 Controles UNIVERSELS (Évite les bugs AZERTY) :
-  FLECHES   : avant / arriere / lacet gauche / droite
+  FLECHES   : avant / arriere / lacet gauche / droite  (combinables !)
   A / E    : monter / descendre  (desactive l'autostab altitude)
-  ESPACE   : stop moteurs
+  ESPACE   : stop moteurs + gel altitude et cap
   R        : frein urgence
 """
 
@@ -90,15 +92,15 @@ keyboard.enable(timestep)
 # ============================================================
 
 # Smoothing commandes pilote
-SMOOTH_H_ATTACK = 0.12  # montee rapide du boost horizontal
-SMOOTH_H_DECAY  = 0.50  # descente tres rapide => boost momentane uniquement
-SMOOTH_YAW = 0.04
-SMOOTH_V   = 0.04
+SMOOTH_H_ATTACK = 0.18  # montee plus reactive
+SMOOTH_H_DECAY  = 0.35  # descente rapide => boost momentane uniquement
+SMOOTH_YAW = 0.08       # lacet plus vif
+SMOOTH_V   = 0.06       # vertical plus reactif
 
 # Trainee
-DRAG_H   = 0.04   # tres faible => haute inertie (blimp coaste longtemps)
+DRAG_H   = 0.08   # legere trainee => arret plus net sans perdre l'inertie du blimp
 DRAG_V   = 0.30
-DRAG_YAW = 0.35
+DRAG_YAW = 0.40
 
 # Vitesses max
 VMAX_H   = 0.3   # limite : couple a piquer = 150*omega vs couple restaurant = 44*theta
@@ -130,14 +132,20 @@ ATT_DEADBAND = 0.02
 ATT_SATURATE = 0.8
 
 # --- Auto-stab altitude ---
-KP_ALT = 0.3
-KI_ALT = 0.0
-KD_ALT = 0.15
+KP_ALT = 0.4
+KI_ALT = 0.02
+KD_ALT = 0.20
 MAX_ALT_CORR = 1.5
 ALT_DEADBAND = 0.02
 
 # --- Amortissement lacet gyro ---
 KD_YAW_GYRO = 1.0
+
+# --- Maintien de cap (heading hold) ---
+KP_YAW_HOLD = 1.8   # correcteur proportionnel cap
+KD_YAW_HOLD = 0.5   # amortissement derive de cap
+MAX_YAW_HOLD_CORR = 1.5
+YAW_HOLD_DEADBAND = 0.015
 
 # --- Stabilisation démarrage ---
 # Au démarrage : m1/m2 éteints, m3 maintient l'altitude
@@ -170,6 +178,11 @@ pilot_wants_alt  = False
 roll_prev  = 0.0
 pitch_prev = 0.0
 
+# Maintien de cap
+target_heading   = None
+yaw_hold_active  = False
+heading_err_prev = 0.0
+
 log_timer = 0.0
 
 def smooth(current, target, rate):
@@ -180,8 +193,9 @@ def clamp(val, lo, hi):
 
 print("Controles :")
 print("  FLECHES (Haut/Bas) avant/arriere   FLECHES (Gauche/Droite) lacet   A/E altitude")
-print("  ESPACE stop              R    frein urgence")
-print("  Auto-stab attitude et altitude ACTIFS\n")
+print("  Combinaisons libres (ex. avant + lacet simultanes)")
+print("  ESPACE stop + gel altitude/cap    R frein urgence")
+print("  Auto-stab attitude, altitude et cap ACTIFS\n")
 
 while robot.step(timestep) != -1:
 
@@ -218,45 +232,64 @@ while robot.step(timestep) != -1:
             print(f"[AUTOSTAB] Altitude cible initiale : {target_altitude:.2f} m")
 
     # --------------------------------------------------------
-    # 2. Commandes pilote (Correction AZERTY via touches Flèches)
+    # 2. Commandes pilote - lecture MULTI-TOUCHES simultanees
     # --------------------------------------------------------
-    key = keyboard.getKey()
+    keys = set()
+    k = keyboard.getKey()
+    while k != -1:
+        keys.add(k)
+        k = keyboard.getKey()
 
     target_x   = 0.0
     target_yaw = 0.0
     target_z   = 0.0
     braking    = False
     pilot_wants_alt = False
+    pilot_wants_yaw = False
 
-    if key == Keyboard.UP:
+    if Keyboard.UP in keys:
         target_x = THRUST_H
-    elif key == Keyboard.DOWN:
+    elif Keyboard.DOWN in keys:
         target_x = -THRUST_H
 
-    if key == Keyboard.LEFT:
+    if Keyboard.LEFT in keys:
         target_yaw = THRUST_YAW
-    elif key == Keyboard.RIGHT:
+        pilot_wants_yaw = True
+    elif Keyboard.RIGHT in keys:
         target_yaw = -THRUST_YAW
+        pilot_wants_yaw = True
 
-    if key in (ord('A'), ord('a')):
+    if any(k in keys for k in (ord('A'), ord('a'))):
         target_z = THRUST_V
         pilot_wants_alt = True
         if target_altitude is not None and altitude is not None:
             target_altitude = altitude
-    elif key in (ord('E'), ord('e')):
+    elif any(k in keys for k in (ord('E'), ord('e'))):
         target_z = -THRUST_V
         pilot_wants_alt = True
         if target_altitude is not None and altitude is not None:
             target_altitude = altitude
 
-    if key in (ord('R'), ord('r')):
+    if any(k in keys for k in (ord('R'), ord('r'))):
         braking = True
 
-    if key == ord(' '):
+    if ord(' ') in keys:
         cmd_x_smooth = cmd_yaw_smooth = cmd_z_smooth = 0.0
         vx = vz = vyaw = 0.0
         if altitude is not None:
             target_altitude = altitude
+        if imu:
+            target_heading = yaw
+            heading_err_prev = 0.0
+
+    # Quand le pilote relache le lacet, geler le cap courant
+    if not pilot_wants_yaw and imu:
+        if not yaw_hold_active:
+            target_heading = yaw
+            heading_err_prev = 0.0
+            yaw_hold_active = True
+    else:
+        yaw_hold_active = False
 
     # --------------------------------------------------------
     # 3. Smoothing commandes
@@ -268,12 +301,12 @@ while robot.step(timestep) != -1:
     cmd_z_smooth   = smooth(cmd_z_smooth,   target_z,   SMOOTH_V)
 
     if braking:
-        vx   *= 0.5
-        vz   *= 0.5
-        vyaw *= 0.5
-        cmd_x_smooth   *= 0.5
-        cmd_yaw_smooth *= 0.5
-        cmd_z_smooth   *= 0.5
+        vx   *= 0.4
+        vz   *= 0.4
+        vyaw *= 0.4
+        cmd_x_smooth   *= 0.4
+        cmd_yaw_smooth *= 0.4
+        cmd_z_smooth   *= 0.4
 
     # --------------------------------------------------------
     # 4. Integration inertielle
@@ -335,15 +368,32 @@ while robot.step(timestep) != -1:
             alt_error_prev = 0.0
 
     # --------------------------------------------------------
-    # 7. Amortissement lacet via Gyro
+    # 7. Maintien de cap (heading hold)
+    # --------------------------------------------------------
+    corr_yaw_hold = 0.0
+
+    if imu and yaw_hold_active and target_heading is not None and not pilot_wants_yaw:
+        # Erreur angulaire normalisee dans [-pi, pi]
+        heading_err = target_heading - yaw
+        while heading_err >  math.pi: heading_err -= 2 * math.pi
+        while heading_err < -math.pi: heading_err += 2 * math.pi
+
+        if abs(heading_err) > YAW_HOLD_DEADBAND:
+            dheading = (heading_err - heading_err_prev) / dt
+            corr_yaw_hold = KP_YAW_HOLD * heading_err + KD_YAW_HOLD * dheading
+            corr_yaw_hold = clamp(corr_yaw_hold, -MAX_YAW_HOLD_CORR, MAX_YAW_HOLD_CORR)
+        heading_err_prev = heading_err
+
+    # --------------------------------------------------------
+    # 8. Amortissement lacet via Gyro
     # --------------------------------------------------------
     yaw_damp = clamp(-KD_YAW_GYRO * yaw_rate, -MAX_ATT_CORR, MAX_ATT_CORR)
 
     # --------------------------------------------------------
-    # 8. Commandes moteurs finales (bridées sous 10)
+    # 9. Commandes moteurs finales (bridées sous 10)
     # --------------------------------------------------------
-    base1 = (vx + vyaw + yaw_damp) * MOTOR_SCALE_H
-    base2 = (vx - vyaw - yaw_damp) * MOTOR_SCALE_H
+    base1 = (vx + vyaw + yaw_damp + corr_yaw_hold) * MOTOR_SCALE_H
+    base2 = (vx - vyaw - yaw_damp - corr_yaw_hold) * MOTOR_SCALE_H
 
     # corr_pitch en mode commun : reduit/augmente la poussee des deux moteurs egalement
     # => couple a piquer negatif/positif qui compense l'inclinaison (correct physiquement)
@@ -367,7 +417,7 @@ while robot.step(timestep) != -1:
     if m3: m3.setVelocity(omega3)
 
     # --------------------------------------------------------
-    # 9. Log toutes les secondes
+    # 10. Log toutes les secondes
     # --------------------------------------------------------
     log_timer += dt
     if log_timer >= 1.0:
@@ -384,11 +434,13 @@ while robot.step(timestep) != -1:
 
         pos_str = f"x={pos[0]:.1f} y={pos[1]:.1f} z={altitude:.1f}" if (gps and altitude is not None) else "GPS N/A"
         alt_err = (target_altitude - altitude) if (target_altitude is not None and altitude is not None) else 0.0
+        hdg_err = (target_heading - yaw) if (target_heading is not None and imu) else 0.0
 
         print(f"[NAV] {pos_str} | cmd={cmd_str}"
               f"| vx={vx:.2f} vz={vz:.2f} vyaw={vyaw:.3f}"
               f"| roll={math.degrees(roll):.1f}° pitch={math.degrees(pitch):.1f}°"
               f"| yaw_rate={math.degrees(yaw_rate):.1f}°/s"
               f"| alt_err={alt_err:.2f}m corr_alt={corr_alt:.2f}"
+              f"| hdg_err={math.degrees(hdg_err):.1f}° corr_yaw={corr_yaw_hold:.2f}"
               f"| accel=[{accel_vals[0]:.2f},{accel_vals[1]:.2f},{accel_vals[2]:.2f}]")
 
