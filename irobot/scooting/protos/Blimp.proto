@@ -296,7 +296,6 @@ PROTO Blimp [
 
       DEF CAMERA Camera {
         translation 0 0 -1.5
-        rotation 1 0 0 3.1416
         name "camera"
         fieldOfView 1.0
         width 320
@@ -349,7 +348,7 @@ PROTO Blimp [
 
       Propeller {
         shaftAxis 1 0 0
-        centerOfThrust 1.96 0 0
+        centerOfThrust 0 -1.0 0
         thrustConstants 50 0
         torqueConstants 1 0
         device RotationalMotor {
@@ -360,7 +359,7 @@ PROTO Blimp [
 
       Propeller {
         shaftAxis 1 0 0
-        centerOfThrust -1.885 0 0
+        centerOfThrust 0 1.0 0
         thrustConstants 50 0
         torqueConstants 1 0
         device RotationalMotor {
