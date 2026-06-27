@@ -104,7 +104,7 @@ DRAG_V   = 0.30
 DRAG_YAW = 0.40
 
 # Vitesses max
-# VMAX_H limite : couple piquer = 50*omega*1.5 m ; couple restaurant pendule = 44*theta
+# VMAX_H limite : couple piquer = 50*omega*1.5 m ; couple restaurateur pendule = 44*theta
 # A omega=0.12 : equilibre a theta ≈ 0.20 rad (11.7°), bien en dessous de ATT_SATURATE
 VMAX_H   = 0.12
 VMAX_V   = 1.0
