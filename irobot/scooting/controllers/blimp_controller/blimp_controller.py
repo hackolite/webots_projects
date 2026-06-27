@@ -4,7 +4,7 @@ Controleur Blimp - Navigation inertielle + Auto-stabilisation
 - Multi-touches : combinaison libre (ex. avant + lacet simultanes)
 - Auto-stab attitude  : correcteur PD sur roll/pitch via IMU
 - Auto-stab altitude  : maintien de la hauteur GPS si aucune commande verticale
-- Maintien de cap     : PID yaw quand aucune commande de lacet
+- Maintien de cap     : PD yaw quand aucune commande de lacet
 - Smoothing des commandes pilote
 - Amortissement angulaire via Gyro
 
@@ -259,18 +259,18 @@ while robot.step(timestep) != -1:
         target_yaw = -THRUST_YAW
         pilot_wants_yaw = True
 
-    if any(k in keys for k in (ord('A'), ord('a'))):
+    if keys & {ord('A'), ord('a')}:
         target_z = THRUST_V
         pilot_wants_alt = True
         if target_altitude is not None and altitude is not None:
             target_altitude = altitude
-    elif any(k in keys for k in (ord('E'), ord('e'))):
+    elif keys & {ord('E'), ord('e')}:
         target_z = -THRUST_V
         pilot_wants_alt = True
         if target_altitude is not None and altitude is not None:
             target_altitude = altitude
 
-    if any(k in keys for k in (ord('R'), ord('r'))):
+    if keys & {ord('R'), ord('r')}:
         braking = True
 
     if ord(' ') in keys:
@@ -374,9 +374,7 @@ while robot.step(timestep) != -1:
 
     if imu and yaw_hold_active and target_heading is not None and not pilot_wants_yaw:
         # Erreur angulaire normalisee dans [-pi, pi]
-        heading_err = target_heading - yaw
-        while heading_err >  math.pi: heading_err -= 2 * math.pi
-        while heading_err < -math.pi: heading_err += 2 * math.pi
+        heading_err = (target_heading - yaw + math.pi) % (2 * math.pi) - math.pi
 
         if abs(heading_err) > YAW_HOLD_DEADBAND:
             dheading = (heading_err - heading_err_prev) / dt
@@ -434,7 +432,7 @@ while robot.step(timestep) != -1:
 
         pos_str = f"x={pos[0]:.1f} y={pos[1]:.1f} z={altitude:.1f}" if (gps and altitude is not None) else "GPS N/A"
         alt_err = (target_altitude - altitude) if (target_altitude is not None and altitude is not None) else 0.0
-        hdg_err = (target_heading - yaw) if (target_heading is not None and imu) else 0.0
+        hdg_err = (target_heading - yaw + math.pi) % (2 * math.pi) - math.pi if (target_heading is not None and imu) else 0.0
 
         print(f"[NAV] {pos_str} | cmd={cmd_str}"
               f"| vx={vx:.2f} vz={vz:.2f} vyaw={vyaw:.3f}"
