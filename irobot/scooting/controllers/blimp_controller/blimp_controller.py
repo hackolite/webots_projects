@@ -126,7 +126,7 @@ VMAX_YAW = 1.0
 
 # Poussee max pilote
 # vx tend vers THRUST_H/DRAG_H en regime etabli => THRUST_H = DRAG_H*VMAX_H = 2.0*0.45 = 0.9
-THRUST_H   = 0.9   # permet d'atteindre VMAX_H tout en gardant le couple a piquer maitrise
+THRUST_H   = 0.1   # permet d'atteindre VMAX_H tout en gardant le couple a piquer maitrise
 THRUST_V   = 3.0
 THRUST_YAW = 2.0
 

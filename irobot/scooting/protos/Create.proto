@@ -1,0 +1,145 @@
+#VRML_SIM R2025a utf8
+
+PROTO RLCreateRobot [
+  field SFVec3f    translation 0 0 0
+  field SFRotation rotation 0 0 1 0
+  field SFString   controller "irobot_controller"
+]
+{
+Robot {
+  translation IS translation
+  rotation IS rotation
+  controller IS controller
+
+  children [
+
+    #########################################################
+    # Châssis
+    #########################################################
+
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.15 0.15 0.15
+        roughness 0.5
+        metalness 0
+      }
+      geometry Cylinder {
+        radius 0.17
+        height 0.07
+      }
+    }
+
+    #########################################################
+    # Caméra RGB
+    #########################################################
+
+    Camera {
+      name "front_camera"
+      translation 0.15 0 0.09
+
+      rotation 0 1 0 0
+
+      width 320
+      height 240
+
+      fieldOfView 1.05
+
+      near 0.03
+      far 20
+
+      recognition Recognition {
+      }
+    }
+
+    #########################################################
+    # Lidar
+    #########################################################
+
+    Lidar {
+      name "lidar"
+
+      translation 0 0 0.09
+
+      horizontalResolution 720
+      numberOfLayers 1
+
+      fieldOfView 6.283185
+
+      minRange 0.05
+      maxRange 12
+
+      frequency 15
+    }
+
+    #########################################################
+    # IMU
+    #########################################################
+
+    InertialUnit {
+      name "imu"
+    }
+
+    #########################################################
+    # GPS
+    #########################################################
+
+    GPS {
+      name "gps"
+    }
+
+    #########################################################
+    # Gyroscope
+    #########################################################
+
+    Gyro {
+      name "gyro"
+    }
+
+    #########################################################
+    # Accéléromètre
+    #########################################################
+
+    Accelerometer {
+      name "accelerometer"
+    }
+
+    #########################################################
+    # Boussole
+    #########################################################
+
+    Compass {
+      name "compass"
+    }
+
+    #########################################################
+    # Émetteur
+    #########################################################
+
+    Emitter {
+      name "emitter"
+      channel 1
+    }
+
+    #########################################################
+    # Récepteur
+    #########################################################
+
+    Receiver {
+      name "receiver"
+      channel 1
+    }
+
+  ]
+
+  boundingObject Cylinder {
+    radius 0.17
+    height 0.07
+  }
+
+  physics Physics {
+    density -1
+    mass 3
+  }
+
+}
+}
