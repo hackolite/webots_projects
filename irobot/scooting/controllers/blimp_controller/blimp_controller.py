@@ -147,7 +147,13 @@ ATT_DEADBAND = 0.01
 # Seuil au-delà duquel la correction est suspendue : laisser l'effet pendule dominer
 ATT_SATURATE = 0.5
 # Seuil vx en-dessous duquel le mode stationnaire (P+D) est actif
-VX_CRUISE_THRESHOLD = 0.01
+# Hysteresis : entree croisiere a VX_CRUISE_ENTER, sortie a VX_CRUISE_EXIT
+# evite le chatter de mode quand vx oscille autour du seuil
+VX_CRUISE_ENTER = 0.015   # |vx| > seuil → passage en mode croisiere (D-only pitch)
+VX_CRUISE_EXIT  = 0.005   # |vx| < seuil → retour en mode stationnaire (PD pitch)
+# Bande morte sur le taux de tangage (rad/s) en mode croisiere
+# filtre le bruit gyro sans degrader l'amortissement
+DPITCH_DEADBAND = 0.005   # rad/s (~0.3°/s)
 
 # --- Anti-dérive : maintien de position horizontale (GPS) ---
 # Activé dès que le pilote relâche les touches avant/arrière
@@ -193,6 +199,10 @@ vyaw = 0.0
 cmd_x_smooth   = 0.0
 cmd_yaw_smooth = 0.0
 cmd_z_smooth   = 0.0
+
+# Mode croisiere pitch (D-only) : True quand blimp en mouvement horizontal
+# Initialise a False (stationnaire au demarrage)
+in_cruise_pitch = False
 
 # Auto-stab altitude
 target_altitude  = None
@@ -399,14 +409,18 @@ while robot.step(timestep) != -1:
             corr_roll  = 0.0
             corr_pitch = 0.0
         else:
-            # En croisiere horizontale (pilote pousse ou blimp en mouvement) :
-            #   D-only — amortit le taux de tangage sans combattre l'equilibre naturel
-            #   du pendule. Ajouter le terme P rendrait le systeme sous-amorti (zeta≈0.71)
-            #   et provoquerait le balancier inarretable.
-            # En stationnaire : P+D pour retour au niveau.
-            in_cruise = pilot_wants_h or (abs(vx) > VX_CRUISE_THRESHOLD)
-            if in_cruise:
-                corr_pitch = KD_ATT * dpitch
+            # Mise a jour du mode croisiere avec hysteresis :
+            #   evite le chatter de mode quand vx oscille autour du seuil
+            if pilot_wants_h or (abs(vx) > VX_CRUISE_ENTER):
+                in_cruise_pitch = True
+            elif abs(vx) < VX_CRUISE_EXIT:
+                in_cruise_pitch = False
+
+            if in_cruise_pitch:
+                # D-only : amortit le taux de tangage sans combattre l'equilibre
+                # naturel du pendule. Bande morte gyro pour filtrer le bruit capteur.
+                dpitch_filtered = dpitch if abs(dpitch) > DPITCH_DEADBAND else 0.0
+                corr_pitch = KD_ATT * dpitch_filtered
             else:
                 pitch_corr_input = pitch if abs(pitch) > ATT_DEADBAND else 0.0
                 corr_pitch = KP_ATT * pitch_corr_input + KD_ATT * dpitch
