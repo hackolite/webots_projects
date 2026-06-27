@@ -101,12 +101,12 @@ DRAG_V   = 0.30
 DRAG_YAW = 0.35
 
 # Vitesses max
-VMAX_H   = 1.0
+VMAX_H   = 0.3   # limite : couple a piquer = 150*omega vs couple restaurant = 44*theta
 VMAX_V   = 1.0
 VMAX_YAW = 1.0
 
 # Poussee max pilote
-THRUST_H   = 1.5   # reduit : le boost est bref, pas besoin de beaucoup de force
+THRUST_H   = 0.5   # reduit : evite un couple a piquer excessif (moteurs 1.5m au-dessus du CoM)
 THRUST_V   = 3.0
 THRUST_YAW = 2.0
 
@@ -293,8 +293,13 @@ while robot.step(timestep) != -1:
     corr_pitch = 0.0
 
     if imu:
-        droll  = (roll  - roll_prev)  / dt
-        dpitch = (pitch - pitch_prev) / dt
+        # Utiliser le gyro pour le terme derivé (plus stable que les differences finies)
+        if gyro:
+            droll  = gyro_vals[0]   # vitesse angulaire axe X (roll)
+            dpitch = gyro_vals[1]   # vitesse angulaire axe Y (pitch)
+        else:
+            droll  = (roll  - roll_prev)  / dt
+            dpitch = (pitch - pitch_prev) / dt
 
         if abs(roll) > ATT_SATURATE or abs(pitch) > ATT_SATURATE:
             corr_roll  = 0.0
@@ -340,8 +345,12 @@ while robot.step(timestep) != -1:
     base1 = (vx + vyaw + yaw_damp) * MOTOR_SCALE_H
     base2 = (vx - vyaw - yaw_damp) * MOTOR_SCALE_H
 
-    omega1 = base1 - corr_pitch + corr_roll
-    omega2 = base2 + corr_pitch + corr_roll
+    # corr_pitch en mode commun : reduit/augmente la poussee des deux moteurs egalement
+    # => couple a piquer negatif/positif qui compense l'inclinaison (correct physiquement)
+    # corr_roll supprime : les moteurs horizontaux ne peuvent pas creer de couple de roulis
+    # (la stabilite en roulis est assuree par l'effet pendule, CoM 1.5 m sous le centre)
+    omega1 = base1 - corr_pitch
+    omega2 = base2 - corr_pitch
 
     omega1 = clamp(omega1, -9.5, 9.5)
     omega2 = clamp(omega2, -9.5, 9.5)
