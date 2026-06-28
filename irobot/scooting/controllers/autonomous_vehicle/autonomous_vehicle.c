@@ -318,7 +318,10 @@ double applyPID(double yellow_line_angle) {
 // snapshot so that api_supervisor can re-serve them through the REST API.
 void publish_state() {
   if (has_camera) {
-    const char *cam_tmp = "/tmp/webots_" RANGEROVER_ID "_camera.jpg.tmp";
+    // The temp file must keep a ".jpg" extension: wb_camera_save_image selects
+    // the encoder from the filename suffix, so a ".tmp" suffix would fail. We
+    // still rename() atomically so the supervisor never reads a partial frame.
+    const char *cam_tmp = "/tmp/webots_" RANGEROVER_ID "_camera_tmp.jpg";
     const char *cam_final = "/tmp/webots_" RANGEROVER_ID "_camera.jpg";
     if (wb_camera_save_image(camera, cam_tmp, 75) == 0)
       rename(cam_tmp, cam_final);

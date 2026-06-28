@@ -58,6 +58,7 @@ GET  /simulation/time                → current simulated time
 
 import base64
 import json
+import logging
 import os
 import struct
 import tempfile
@@ -184,9 +185,7 @@ def _camera_stream(cond, get_frame, get_seq):
 app = Flask(__name__)
 app.url_map.merge_slashes = True
 
-import logging
-
-logging.getLogger("werkzeug").setLevel(logging.ERROR)
+logging.getLogger("werkzeug").setLevel(logging.ERROR)  # silence Flask banner
 
 # Numeric aliases: "1"/"2"/"3" → the controllable robots in declaration order.
 _NUMERIC_ID_MAP = {str(i + 1): rid for i, rid in enumerate(CONTROLLABLE)}
