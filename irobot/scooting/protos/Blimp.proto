@@ -380,6 +380,18 @@ PROTO Blimp [
           maxTorque 500
         }
       }
+
+      # Propulseur latéral (axe Y body) — correction dérive côté
+      Propeller {
+        shaftAxis 0 1 0
+        centerOfThrust 0 0 -1.0
+        thrustConstants 50 0
+        torqueConstants 0 0
+        device RotationalMotor {
+          name "motor4"
+          maxTorque 500
+        }
+      }
     ]
 
     name IS name

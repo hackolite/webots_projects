@@ -85,8 +85,9 @@ if ds6: ds6.enable(timestep)
 m1 = robot.getDevice("motor1")   # avant  axe X
 m2 = robot.getDevice("motor2")   # arriere axe X
 m3 = robot.getDevice("motor3")   # vertical axe Z
+m4 = robot.getDevice("motor4")   # lateral axe Y
 
-for m, name in [(m1,"motor1"),(m2,"motor2"),(m3,"motor3")]:
+for m, name in [(m1,"motor1"),(m2,"motor2"),(m3,"motor3"),(m4,"motor4")]:
     if m:
         m.setPosition(float('inf'))
         m.setVelocity(0.0)
@@ -181,11 +182,10 @@ KP_POS      = 0.15   # proportionnel position (rad/s / m)
 KD_VEL_HOLD = 1.0    # dérivé vitesse (rad/s / m·s⁻¹)
 MAX_POS_CORR = 0.08  # limite ≈ 67 % de VMAX_H
 VEL_SMOOTH   = 0.25  # lissage passe-bas vitesse GPS (0=figé, 1=instantané)
-# Correction dérive latérale : l'erreur latérale (axe Y body) est convertie en
-# commande de lacet pour orienter le blimp vers la cible (pas de propulseur latéral).
-KP_SIDE      = 0.30  # gain proportionnel erreur latérale → lacet (rad/s / m)
-KD_SIDE_VEL  = 0.50  # gain dérivé vitesse latérale → lacet (rad/s / m·s⁻¹)
-MAX_SIDE_CORR = 0.40 # plafond correction lacet latérale
+# Correction dérive latérale via motor4 (propulseur axe Y) — correction directe
+KP_SIDE      = 0.30  # gain proportionnel erreur latérale (rad/s / m)
+KD_SIDE_VEL  = 0.80  # gain dérivé vitesse latérale (rad/s / m·s⁻¹)
+MAX_SIDE_CORR = 2.0  # plafond commande motor4
 
 # --- Auto-stab altitude ---
 KP_ALT = 0.4
@@ -596,11 +596,11 @@ while robot.step(timestep) != -1:
     # --------------------------------------------------------
     # 7b. Anti-dérive : maintien de position horizontale (GPS)
     # --------------------------------------------------------
-    corr_pos      = 0.0
-    corr_yaw_side = 0.0
+    corr_pos  = 0.0
+    corr_side = 0.0   # commande directe motor4 (axe Y body)
 
     if pos_hold_active and gps and target_pos_x is not None:
-        # Erreur position monde → projection sur l'axe avant du blimp (body frame)
+        # Erreur position monde → projection sur les axes body du blimp
         err_world_x = target_pos_x - pos[0]
         err_world_y = target_pos_y - pos[1]
         err_fwd  =  err_world_x * math.cos(yaw) + err_world_y * math.sin(yaw)
@@ -616,9 +616,9 @@ while robot.step(timestep) != -1:
             KP_POS * err_fwd - KD_VEL_HOLD * vel_fwd,
             -MAX_POS_CORR, MAX_POS_CORR
         )
-        # L'erreur latérale est compensée en faisant virer le blimp vers la cible :
-        # err_side > 0 → cible à gauche → lacet positif (virage gauche)
-        corr_yaw_side = clamp(
+        # Correction latérale directe via motor4 :
+        # err_side > 0 → cible à +Y body → motor4 pousse en +Y (omega4 > 0) ✓
+        corr_side = clamp(
             KP_SIDE * err_side - KD_SIDE_VEL * vel_side,
             -MAX_SIDE_CORR, MAX_SIDE_CORR
         )
@@ -631,8 +631,8 @@ while robot.step(timestep) != -1:
     # --------------------------------------------------------
     # 9. Commandes moteurs finales (bridées sous 10)
     # --------------------------------------------------------
-    base1 = (vx + corr_pos + vyaw + yaw_damp + corr_yaw_hold + corr_yaw_side) * MOTOR_SCALE_H
-    base2 = (vx + corr_pos - vyaw - yaw_damp - corr_yaw_hold - corr_yaw_side) * MOTOR_SCALE_H
+    base1 = (vx + corr_pos + vyaw + yaw_damp + corr_yaw_hold) * MOTOR_SCALE_H
+    base2 = (vx + corr_pos - vyaw - yaw_damp - corr_yaw_hold) * MOTOR_SCALE_H
 
     # corr_pitch en mode commun : reduit/augmente la poussee des deux moteurs egalement
     # => couple a piquer negatif/positif qui compense l'inclinaison (correct physiquement)
@@ -651,9 +651,13 @@ while robot.step(timestep) != -1:
 
     omega3 = clamp(omega3, 0.0, 9.5)
 
+    # Motor4 : propulsion latérale directe (correction dérive Y body)
+    omega4 = clamp(corr_side, -9.5, 9.5)
+
     if m1: m1.setVelocity(omega1)
     if m2: m2.setVelocity(omega2)
     if m3: m3.setVelocity(omega3)
+    if m4: m4.setVelocity(omega4)
 
     # --------------------------------------------------------
     # 10. Log toutes les secondes
@@ -692,6 +696,6 @@ while robot.step(timestep) != -1:
             f"[CORR] alt_err={alt_err:.3f}m corr_alt={corr_alt:.3f}"
             f" | hdg_err={math.degrees(hdg_err):.2f}° corr_yaw={corr_yaw_hold:.3f}"
             f" | pos_err_fwd={pos_err_fwd:.3f}m corr_pos={corr_pos:.3f}"
-            f" | pos_err_side={pos_err_side:.3f}m corr_yaw_side={corr_yaw_side:.3f}"
+            f" | pos_err_side={pos_err_side:.3f}m corr_side={corr_side:.3f}"
             f" | corr_pitch={corr_pitch:.3f}"
         )
