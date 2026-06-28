@@ -298,10 +298,8 @@ DEF CREATE Create {
   customData "{\"mode\": \"auto\", \"speed_left\": 0.0, \"speed_right\": 0.0}"
 }
 DEF BLIMP Blimp {
-  hidden linearVelocity_0 -149.8904189368207 2.2853630021036384 -574.5726811953404
-  hidden angularVelocity_0 1.2187807461308664 -0.133818052968084 3.1903738786233005
-  translation -5529.93783639632 -8.872021049607381 -18372.74880280159
-  rotation -0.8188040512197059 0.4649179272553186 -0.3367658632088704 -2.5463515407002664
+  translation 0 0 10
+  rotation 0 0 1 0
   name "BLIMP"
   controller "blimp_controller"
 }
