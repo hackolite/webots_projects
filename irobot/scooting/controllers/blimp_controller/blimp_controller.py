@@ -28,6 +28,8 @@ from controller import Robot, Keyboard, InertialUnit, GPS
 import math
 import random
 
+from scooting_io import CameraPublisher, write_sensors
+
 robot = Robot()
 timestep = int(robot.getBasicTimeStep())
 dt = timestep / 1000.0
@@ -259,11 +261,27 @@ print("  Combinaisons libres (ex. avant + lacet simultanes)")
 print("  ESPACE stop + gel altitude/cap    R frein urgence")
 print("  Auto-stab attitude, altitude et cap ACTIFS\n")
 
+# Camera + sensor publishing for the REST API (read-only camera robot)
+cam_pub = CameraPublisher(robot.getName())
+
 while robot.step(timestep) != -1:
 
     # Fix écran noir caméra
     if camera:
         camera.getImage()
+
+    # Publish camera frame + sensor snapshot for the REST API
+    cam_pub.publish(camera)
+    write_sensors(robot.getName(), {
+        "name": robot.getName(),
+        "time": robot.getTime(),
+        "gps": list(gps.getValues()) if gps else None,
+        "imu_rpy": list(imu.getRollPitchYaw()) if imu else None,
+        "gyro": list(gyro.getValues()) if gyro else None,
+        "accel": list(accel.getValues()) if accel else None,
+        "ds0": ds0.getValue() if ds0 else None,
+        "ds6": ds6.getValue() if ds6 else None,
+    })
 
     # --------------------------------------------------------
     # 1. Lecture capteurs

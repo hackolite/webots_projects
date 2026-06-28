@@ -8,6 +8,8 @@ EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/project
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/buildings/protos/BungalowStyleHouse.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/buildings/protos/LargeResidentialTower.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/vehicles/protos/range_rover/RangeRoverSportSVR.proto"
+EXTERNPROTO "../protos/Blimp.proto"
+EXTERNPROTO "../protos/Create.proto"
 
 WorldInfo {
   contactProperties [
@@ -20,7 +22,7 @@ WorldInfo {
 Viewpoint {
   orientation 0.4240561610163518 -0.8586688401905285 0.28786141663989395 5.718059944575746
   position -53.76191967421221 31.270777496389673 12.605362477472914
-  follow "Blimp"
+  follow "BLIMP"
 }
 TexturedBackground {
 }
@@ -30,7 +32,7 @@ Floor {
   size 100 100
   tileSize 1 0.5
 }
-TiagoLite {
+DEF TIAGO_1 TiagoLite {
   hidden position_0_0 72.83279156277376
   hidden position_0_1 72.84843424310282
   hidden position_0_2 12.566369662212004
@@ -91,7 +93,9 @@ TiagoLite {
   hidden angularVelocity_26 -0.7077324330978833 9.824544430035502 -0.00011320866005725223
   translation 7.867315691239295 0.20293227040876746 0.09089747306456675
   rotation -0.00018565762872434078 0.00025154615606836153 0.9999999511278871 0.07191015290117443
-  name "TIAGo LITE(1)"
+  name "TIAGO_1"
+  controller "tiago_lite"
+  customData "{\"mode\":\"auto\",\"speed_left\":0,\"speed_right\":0}"
 }
 BungalowStyleHouse {
   translation -35 0 0
@@ -112,7 +116,7 @@ BungalowStyleHouse {
   translation -35 36 0
   name "bungalow style house(3)"
 }
-TiagoLite {
+DEF TIAGO_2 TiagoLite {
   hidden position_0_0 90.52352212182564
   hidden position_0_1 92.31029107532233
   hidden position_0_2 -37.699110986946444
@@ -173,6 +177,9 @@ TiagoLite {
   hidden angularVelocity_26 1.1418990464531467 9.783588593237798 -0.0002451176160495073
   translation 19.734069496853728 -16.88852330830951 0.09089705419771574
   rotation -0.000210028588603885 0.0004782020663462057 -0.9999998636053785 0.11618909120713646
+  name "TIAGO_2"
+  controller "tiago_lite"
+  customData "{\"mode\":\"auto\",\"speed_left\":0,\"speed_right\":0}"
 }
 ModernHouse {
   translation 26 41 0
@@ -204,7 +211,7 @@ LargeResidentialTower {
   translation -5 -37 0
   name "residential tower(2)"
 }
-RangeRoverSportSVR {
+DEF RANGEROVER RangeRoverSportSVR {
   hidden position_0_0 -8.016734645024211e-09
   hidden position2_0_0 0.02058399886674456
   hidden position_0_1 -7.821765041982551e-09
@@ -217,5 +224,46 @@ RangeRoverSportSVR {
   hidden rotation_4 0 1 0 0.01583947961436913
   translation 10.607688648210585 4.325333619756807 -0.14942691181215229
   rotation 0.011379950559584908 0.05447092467023902 -0.9984505070812627 0.4125329924852547
+  name "RANGEROVER"
   controller "autonomous_vehicle"
+  sensorsSlotCenter [
+    Camera {
+      translation 2.5 0 0.4
+      rotation 0 1 0 -1.5708
+      name "camera"
+      fieldOfView 1.0
+      width 320
+      height 240
+    }
+    GPS {
+      name "gps"
+    }
+  ]
+}
+DEF CREATE Create {
+  translation 14 -2 0.05
+  rotation 0 0 1 1.5708
+  name "CREATE"
+  controller "create_controller"
+  customData "{\"mode\":\"auto\",\"speed_left\":0,\"speed_right\":0}"
+}
+DEF BLIMP Blimp {
+  translation 6 6 8
+  name "BLIMP"
+  controller "blimp_controller"
+}
+DEF API_SUPERVISOR Robot {
+  children [
+    Camera {
+      translation 0 0 70
+      rotation -0.693384144456226 0 0.7205681287822183 -3.141592653589793
+      name "god_camera"
+      fieldOfView 1.0
+      width 512
+      height 512
+    }
+  ]
+  name "API_SUPERVISOR"
+  controller "api_supervisor"
+  supervisor TRUE
 }
