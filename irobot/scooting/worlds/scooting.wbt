@@ -10,6 +10,9 @@ EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/project
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/vehicles/protos/range_rover/RangeRoverSportSVR.proto"
 EXTERNPROTO "../protos/Blimp.proto"
 EXTERNPROTO "../protos/Create.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/obstacles/protos/OilBarrel.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/street_furniture/protos/SnackStand.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/advertising_board/protos/AdvertisingBoard.proto"
 
 WorldInfo {
   contactProperties [
@@ -20,8 +23,8 @@ WorldInfo {
   ]
 }
 Viewpoint {
-  orientation 0.4240561610163518 -0.8586688401905285 0.28786141663989395 5.718059944575746
-  position -53.76191967421221 31.270777496389673 12.605362477472914
+  orientation 0.1836241331972573 0.03316522845929466 -0.9824368912702731 2.790347855745449
+  position 1503207.1141640965 -1446509.026638146 -25913.51491188286
   follow "BLIMP"
 }
 TexturedBackground {
@@ -32,73 +35,76 @@ Floor {
   size 100 100
   tileSize 1 0.5
 }
+OilBarrel {
+  translation 0 -3 0.44
+}
 DEF TIAGO_1 TiagoLite {
-  hidden position_0_0 72.83279156277376
-  hidden position_0_1 72.84843424310282
-  hidden position_0_2 12.566369662212004
-  hidden position_0_3 -213.62829896634645
-  hidden position_0_4 -113.09733303440498
-  hidden position_0_5 263.89378587486624
-  hidden linearVelocity_0 0.24561356703238849 0.017692883281166298 -2.6967221271794996e-12
-  hidden angularVelocity_0 2.9894067679056276e-08 1.5873595863912213e-09 -7.273662120397773e-07
-  hidden position_1_0 -8.245707207728284e-05
-  hidden translation_2 0 0 0.5999175429279227
-  hidden position_2_0 6.206612373394115e-07
-  hidden linearVelocity_2 0.24561356614011934 0.017692892243224696 -1.962714301871898e-11
-  hidden angularVelocity_2 2.984668732097229e-08 1.5808294955363891e-09 -7.273182631656588e-07
-  hidden rotation_3 0 0 1 6.208618478774947e-07
-  hidden position_3_0 -3.0790914653035823e-06
-  hidden linearVelocity_3 0.2456135782282143 0.017692722335726135 8.11439336246485e-11
-  hidden angularVelocity_3 2.9686518852135386e-08 1.4819259284073286e-09 -7.48345453332309e-06
-  hidden rotation_4 0.99999999999763 1.5395400775925034e-06 -1.5395457326493587e-06 1.5708000000023699
-  hidden linearVelocity_4 0.2456136154469969 0.01769241409827351 1.6772428133289418e-10
-  hidden angularVelocity_4 2.967685236526602e-08 1.4809257669749973e-09 -7.4834253529560595e-06
-  hidden translation_13 -1.4354690147655447e-07 2.36602959446941e-10 0.029963506855025607
-  hidden rotation_13 0.043685547723528756 0.998933673692791 -0.01493614684983274 3.1281115330504355e-10
-  hidden linearVelocity_13 0.24561356758615116 0.01769287631472726 4.861058722887267e-12
-  hidden angularVelocity_13 2.989422387330671e-08 1.587374219360708e-09 -7.27367219792808e-07
-  hidden rotation_17 0.20507906551332716 -0.6920762451379975 0.6920787872806613 2.737045154388805
-  hidden linearVelocity_17 0.24561348819132353 0.017692718201617722 -5.936955994763978e-09
-  hidden angularVelocity_17 -0.1796204656213868 2.4935389303106312 -3.2403174164929055e-05
-  hidden rotation_18 0.2107225800705689 -0.6912280680601449 0.6912306070872746 2.726225828304264
-  hidden linearVelocity_18 0.24561367228809458 0.017692684132966933 5.947383074996767e-09
-  hidden angularVelocity_18 -0.1796205107716479 2.49353896215948 -3.250111574076208e-05
-  hidden rotation_19 0 0 -0.9999999999999999 9.522763078612452e-07
-  hidden position_19_0 17468.956608672048
-  hidden linearVelocity_19 0.24561351005286192 0.017692643393754925 -4.239901227660882e-09
-  hidden angularVelocity_19 2.7249621947919294e-08 1.6749403952760354e-09 2.0724562565134346e-05
-  hidden rotation_20 -0.5271042229620084 0.6008986959087362 0.600900903136946 2.171405413759631
-  hidden linearVelocity_20 0.24561353273012768 0.017692328801844553 -4.160324764179486e-09
-  hidden angularVelocity_20 -0.7076899242483209 9.824541541176382 -0.00010481255542566061
-  hidden rotation_21 0 0 1 1.4778466544410849e-06
-  hidden position_21_0 17458.016902193278
-  hidden linearVelocity_21 0.24561364241541903 0.017692871190086164 4.355113615916627e-09
-  hidden angularVelocity_21 4.050522063651009e-08 2.5741667787116324e-09 1.638419498074611e-05
-  hidden rotation_22 0.06599477500738064 0.7055639703331549 0.7055665620190913 3.2733906015819616
-  hidden linearVelocity_22 0.24561364634509827 0.017692816940005657 4.2655865518619535e-09
-  hidden angularVelocity_22 -0.7077158257187297 9.824545626463722 -0.00010740521665682232
-  hidden rotation_23 0 0 1 2.4948656006405002e-06
-  hidden position_23_0 17452.914750953874
-  hidden linearVelocity_23 0.2456134789859282 0.017693074683117063 -4.346746704440347e-09
-  hidden angularVelocity_23 3.408372842869544e-08 1.8629535686266408e-09 -3.07735024245759e-06
-  hidden rotation_24 -0.49928189587428384 -0.6126641946909026 -0.6126664451362819 2.2154496682146485
-  hidden linearVelocity_24 0.24561347142442982 0.01769317991580249 -4.269366969819347e-09
-  hidden angularVelocity_24 -0.7077301835082765 9.824538641007592 -0.00012640132337138755
-  hidden rotation_25 0 0 0.9999999999999999 2.973369803723828e-06
-  hidden position_25_0 17496.123546035204
-  hidden linearVelocity_25 0.24561362148054647 0.017693161807377292 4.258658351569186e-09
-  hidden angularVelocity_25 4.177594496067282e-08 2.5765119925220793e-09 9.60442212590826e-06
-  hidden rotation_26 0.21153660373155111 0.6911037391174445 0.6911062776878877 3.5585180464101627
-  hidden linearVelocity_26 0.24561361752900576 0.01769321695067094 4.169901821926189e-09
-  hidden angularVelocity_26 -0.7077324330978833 9.824544430035502 -0.00011320866005725223
-  translation 7.867315691239295 0.20293227040876746 0.09089747306456675
-  rotation -0.00018565762872434078 0.00025154615606836153 0.9999999511278871 0.07191015290117443
+  hidden position_0_0 9679.272304568985
+  hidden position_0_1 9568.598138788839
+  hidden position_0_2 3.582819361225799e-06
+  hidden position_0_3 2.250349169399315e-06
+  hidden position_0_4 2.359591667822508e-06
+  hidden position_0_5 -3.476209844425262e-06
+  hidden linearVelocity_0 -0.37970161870897157 0.10517927945314565 3.2860459492086808e-12
+  hidden angularVelocity_0 1.0661572730854477e-07 -2.9950463197648923e-08 8.81830601145671e-07
+  hidden position_1_0 -8.245707207948951e-05
+  hidden translation_2 0 0 0.5999175429279204
+  hidden position_2_0 1.2225267491414965e-07
+  hidden linearVelocity_2 -0.3797016246384824 0.10517925869961725 1.489997277638613e-11
+  hidden angularVelocity_2 1.0658821713469773e-07 -2.994588229467893e-08 8.818074675393645e-07
+  hidden rotation_3 0 0 1 1.2287812309317772e-07
+  hidden position_3_0 -3.800914879849204e-06
+  hidden linearVelocity_3 -0.37970168307666613 0.10517904814047867 -5.734036288949091e-11
+  hidden angularVelocity_3 1.0641528016943719e-07 -2.9986504481731423e-08 7.637927225636896e-06
+  hidden rotation_4 0.9999999999963882 1.900450459162881e-06 -1.9004574399200262e-06 1.5708000000036115
+  hidden linearVelocity_4 -0.3797017546972682 0.10517873227144423 -2.9958754660968015e-10
+  hidden angularVelocity_4 1.0640710155876898e-07 -2.998467343134996e-08 7.63789997963059e-06
+  hidden translation_13 -0.0004479149054681386 -0.0001327439756177995 0.02990533761270242
+  hidden rotation_13 0.15171422011009486 -0.253139925096908 -0.9554595615400568 -3.3168311304621056e-05
+  hidden linearVelocity_13 -0.3797016190898453 0.10517927837911226 1.2865114278524446e-11
+  hidden angularVelocity_13 1.0661572864093038e-07 -2.9950459932018156e-08 8.818333105668081e-07
+  hidden rotation_17 -0.008958775733615991 0.7070771059181103 -0.7070797031621144 3.1595096599184567
+  hidden linearVelocity_17 -0.3797017055931691 0.10517928110997869 2.192838010653824e-08
+  hidden angularVelocity_17 -1.0678100570894389 -3.8548387531721247 -4.877406036889885e-05
+  hidden rotation_18 -0.8905857697531173 0.3216024151690316 -0.32160359648283393 4.596767915165909
+  hidden linearVelocity_18 -0.37970154332728506 0.10517923580639836 -2.1933027526014297e-08
+  hidden angularVelocity_18 -1.0678099623664092 -3.8548387456257944 -4.8902021272431543e-05
+  hidden rotation_19 0 0 1 3.582853988083989e-06
+  hidden position_19_0 37911.0453644792
+  hidden linearVelocity_19 -0.3797018212763012 0.10517888480917223 1.0024332715771212e-08
+  hidden angularVelocity_19 9.180789385269394e-08 -2.5593633851060936e-08 -1.8557878139759156e-05
+  hidden rotation_20 -0.5296674986718158 -0.5997706637352034 -0.5997728668199115 2.1673977729509937
+  hidden linearVelocity_20 -0.3797019497158331 0.10517842112217601 9.829421846884396e-09
+  hidden angularVelocity_20 -4.207130642373295 -15.18807970537213 -0.00020966759788250555
+  hidden rotation_21 0 0 1 2.25042070491956e-06
+  hidden position_21_0 37843.170296790515
+  hidden linearVelocity_21 -0.3797015519722078 0.10517918309287277 -1.0101481462262249e-08
+  hidden angularVelocity_21 1.178979928289261e-07 -3.261283053949157e-08 -3.5435205297634756e-05
+  hidden rotation_22 0.9504012235250318 0.21992857816276612 0.21992938600702497 4.6615361959627
+  hidden linearVelocity_22 -0.37970162955867054 0.10517890296198197 -9.904276997988472e-09
+  hidden angularVelocity_22 -4.207157153920617 -15.188064893750719 -0.00023091869376800915
+  hidden rotation_23 0 0 0.9999999999999999 2.359658982374515e-06
+  hidden position_23_0 37965.714691340596
+  hidden linearVelocity_23 -0.37970169612013094 0.10517933663153298 1.0099813104631825e-08
+  hidden angularVelocity_23 9.23214007789786e-08 -2.6353150874996197e-08 2.9169720270382875e-05
+  hidden rotation_24 -0.15350991933228417 0.698724236742098 0.6987268033042441 2.836952052365038
+  hidden linearVelocity_24 -0.3797016527420395 0.10517949321773244 9.911519310002238e-09
+  hidden angularVelocity_24 -4.2071776077899115 -15.18806669630324 -0.00016606567311086792
+  hidden rotation_25 0 0 -1 3.4761569872523373e-06
+  hidden position_25_0 37906.703677293255
+  hidden linearVelocity_25 -0.3797014112787472 0.10517969099916394 -1.0050233114646347e-08
+  hidden angularVelocity_25 1.290791532556927e-07 -3.588728872861814e-08 -2.1425644378855727e-05
+  hidden rotation_26 0.9849724151081765 -0.12212541076016274 -0.12212585935266931 4.697244242984851
+  hidden linearVelocity_26 -0.37970139153209853 0.10517976224453536 -9.851510144689106e-09
+  hidden angularVelocity_26 -4.207195594170435 -15.18805424573681 -0.00022133658031012866
+  translation -23.25035930604269 16.275400810824408 0.09089748393912317
+  rotation 9.661186707978555e-06 5.018273589431398e-06 -0.9999999999407393 -2.8713632595368024
   name "TIAGO_1"
-  controller "tiago_lite"
-  customData "{\"mode\":\"auto\",\"speed_left\":0,\"speed_right\":0}"
+  customData "{\"mode\": \"auto\", \"speed_left\": 0.0, \"speed_right\": 0.0}"
 }
 BungalowStyleHouse {
-  translation -35 0 0
+  translation -35 -2 0
+  rotation 0 1 0 4.692820414042842e-06
 }
 BungalowStyleHouse {
   translation -34 -23 0
@@ -109,77 +115,76 @@ BungalowStyleHouse {
   name "bungalow style house(4)"
 }
 BungalowStyleHouse {
-  translation -35 19 0
+  translation -35 17 0
   name "bungalow style house(2)"
 }
 BungalowStyleHouse {
-  translation -35 36 0
+  translation -35 38 0
   name "bungalow style house(3)"
 }
 DEF TIAGO_2 TiagoLite {
-  hidden position_0_0 90.52352212182564
-  hidden position_0_1 92.31029107532233
-  hidden position_0_2 -37.699110986946444
-  hidden position_0_3 -502.6548261916619
-  hidden position_0_4 213.6283005725711
-  hidden position_0_5 376.9911180938782
-  hidden linearVelocity_0 0.24458969344297488 -0.028547228168819678 -9.021221025646115e-13
-  hidden angularVelocity_0 1.2001607481337968e-07 -1.5004921503314788e-08 -4.88184860463806e-07
-  hidden position_1_0 -8.245707194796595e-05
-  hidden translation_2 0 0 0.599917542928052
-  hidden position_2_0 -9.390830059782215e-07
-  hidden linearVelocity_2 0.2445896886105451 -0.028547265852596343 -2.943861268275556e-11
-  hidden angularVelocity_2 1.1997338882712438e-07 -1.5003528876216258e-08 -4.881112310428459e-07
-  hidden rotation_3 0 0 -1 9.391278777473495e-07
-  hidden position_3_0 -4.5341041539535715e-06
-  hidden linearVelocity_3 0.24458967079219038 -0.028547416275558263 1.4800406769649125e-10
-  hidden angularVelocity_3 1.19543635195056e-07 -1.5142466806295626e-08 -7.245260796228904e-06
-  hidden rotation_4 0.9999999999948607 2.26704374969532e-06 -2.267052076955529e-06 1.57080000000513
-  hidden linearVelocity_4 0.24458964942347627 -0.028547724094700827 4.388557907029467e-10
-  hidden angularVelocity_4 1.1953262844510625e-07 -1.5141641037088468e-08 -7.24522980945457e-06
-  hidden translation_13 0.017228040174661174 0.007770263045044246 0.029602371452859738
-  hidden rotation_13 0.2069101384770798 -0.05220910824567888 0.9769659173234176 0.00032571622426946464
-  hidden linearVelocity_13 0.2445896968762311 -0.028547232249735686 9.68647432832965e-10
-  hidden angularVelocity_13 1.2001618379661062e-07 -1.5004931360778916e-08 -4.881841588049062e-07
-  hidden rotation_17 0.20742496533224877 0.6917265964931152 -0.6917291373514393 2.7325448162137778
-  hidden linearVelocity_17 0.24458968370211576 -0.028547234715619547 -2.39501088351134e-08
-  hidden angularVelocity_17 0.28981965071656474 2.483144085950991 -6.937253947780119e-05
-  hidden rotation_18 -0.4370331707895857 0.6360027657169837 -0.6360051018898737 3.965627045883503
-  hidden linearVelocity_18 0.2445897017327503 -0.028547236777303368 2.397325553536473e-08
-  hidden angularVelocity_18 0.28981961131309325 2.483144094077928 -6.947333560055938e-05
-  hidden rotation_19 0 0 1 8.560065398421992e-07
-  hidden position_19_0 21267.065413169094
-  hidden linearVelocity_19 0.24458964430224636 -0.028547221569538803 -1.205134577517428e-08
-  hidden angularVelocity_19 1.205372547319778e-07 -1.5445581185678543e-08 -1.4412885925201375e-05
-  hidden rotation_20 0.5981108174400024 0.566683814351475 0.5666858959011731 4.219647892567497
-  hidden linearVelocity_20 0.24458966863138934 -0.028547013345056056 -1.1833201669433907e-08
-  hidden angularVelocity_20 1.1418770093139423 9.78358715247733 -0.00028556672368631303
-  hidden rotation_21 0 0 -1 1.6173080863017445e-06
-  hidden position_21_0 21445.645928250382
-  hidden linearVelocity_21 0.2445897217808817 -0.028547416777433502 1.231610028060618e-08
-  hidden angularVelocity_21 1.1334426670543774e-07 -1.4084243667047433e-08 4.719387615590122e-06
-  hidden rotation_22 0.7429384711835635 -0.47330792423310586 -0.47330966279337483 4.419521918285378
-  hidden linearVelocity_22 0.24458970249745138 -0.028547582191231744 1.2064338274627411e-08
-  hidden angularVelocity_22 1.1419067516036803 9.783587691948476 -0.0002680323847529149
-  hidden rotation_23 0 0 1 1.2990531157078367e-07
-  hidden position_23_0 20931.86869334921
-  hidden linearVelocity_23 0.24458965730852059 -0.028547110177214115 -1.2274127599575526e-08
-  hidden angularVelocity_23 1.2709839156641486e-07 -1.5087624041793835e-08 2.5874183630210457e-05
-  hidden rotation_24 0.20039223472064893 -0.692762378656508 -0.6927649233194775 3.5371365985755725
-  hidden linearVelocity_24 0.24458962853486818 -0.02854735707475717 -1.2036349593377398e-08
-  hidden angularVelocity_24 1.1418937789625057 9.78358519715563 -0.00024535370583867697
-  hidden rotation_25 0 0 -1 3.3717478808715265e-07
-  hidden position_25_0 20906.463912703057
-  hidden linearVelocity_25 0.24458975130331337 -0.02854716390553095 1.2068251124308345e-08
-  hidden angularVelocity_25 1.2446542647438295e-07 -1.476797092496288e-08 2.643352931184508e-05
-  hidden rotation_26 0.2993530571693902 -0.6746793323951855 -0.6746818106352999 3.7233169619161193
-  hidden linearVelocity_26 0.244589716976897 -0.028547458434317146 1.182930185920206e-08
-  hidden angularVelocity_26 1.1418990464531467 9.783588593237798 -0.0002451176160495073
-  translation 19.734069496853728 -16.88852330830951 0.09089705419771574
-  rotation -0.000210028588603885 0.0004782020663462057 -0.9999998636053785 0.11618909120713646
+  hidden position_0_0 10051.77858939137
+  hidden position_0_1 10166.208126825524
+  hidden position_0_2 -6.2831889293618985
+  hidden position_0_3 -5.719941999203463e-08
+  hidden position_0_4 1.6575538283249098e-06
+  hidden position_0_5 -2.6286809055024756e-06
+  hidden linearVelocity_0 0.21069594398436126 -0.3329312534039398 1.633542456018221e-11
+  hidden angularVelocity_0 -1.3929396957822553e-07 2.228471704166262e-07 -7.596932001856362e-07
+  hidden position_1_0 -8.245707207974864e-05
+  hidden translation_2 0 0 0.5999175429279201
+  hidden position_2_0 7.563760448724088e-07
+  hidden linearVelocity_2 0.21069606079018438 -0.33293118025112384 5.890254674626024e-11
+  hidden angularVelocity_2 -1.393018818756386e-07 2.2286627850275927e-07 -7.597789667757229e-07
+  hidden rotation_3 0 0 1 7.562981570034979e-07
+  hidden position_3_0 -3.7719304995642184e-06
+  hidden linearVelocity_3 0.21069603347525911 -0.332931197998047 -2.0249092821593812e-10
+  hidden angularVelocity_3 -1.3913410178248877e-07 2.22797980040314e-07 5.996286160889221e-06
+  hidden rotation_4 0.9999999999964432 1.8859583222924322e-06 -1.8859652497776362e-06 1.570800000003557
+  hidden linearVelocity_4 0.2106962546045056 -0.33293104396392914 -7.952213455001801e-10
+  hidden angularVelocity_4 -1.3912832500444916e-07 2.2278955437370333e-07 5.996255004177169e-06
+  hidden translation_13 -0.0014765955948163878 0.0013194242086527197 0.028976513858793962
+  hidden rotation_13 0.9319705871219572 0.32435959364157274 -0.16193109260493554 -0.0015909764968746742
+  hidden linearVelocity_13 0.2106959158843886 -0.3329312722658691 -3.643153291088099e-10
+  hidden angularVelocity_13 -1.3929414745759884e-07 2.22847442469729e-07 -7.5969521254557e-07
+  hidden rotation_17 0.6742818059935362 -0.5221791086138751 0.5221810266883641 1.9550838385209357
+  hidden linearVelocity_17 0.2106960820100846 -0.33293107987918336 5.2072280983598754e-08
+  hidden angularVelocity_17 3.380011040869115 2.139047745929037 -6.21231224578575e-05
+  hidden rotation_18 0.9999488812314213 0.007149634553559091 -0.0071496608156818445 1.5708511200751596
+  hidden linearVelocity_18 0.2106961591390656 -0.33293120283983185 -5.207718973822154e-08
+  hidden angularVelocity_18 3.380011014748045 2.1390478396541637 -6.225895857442242e-05
+  hidden rotation_19 0 0 1 6.283181685001842
+  hidden position_19_0 39477.82950880522
+  hidden linearVelocity_19 0.21069552029438723 -0.33293142944194043 2.726260993737162e-08
+  hidden angularVelocity_19 -1.5099343375269517e-07 2.4069481106275164e-07 -2.234432889467556e-05
+  hidden rotation_20 0.9222741325245944 -0.2733220405134515 -0.2733230444832086 4.631560686774571
+  hidden linearVelocity_20 0.21069548974076427 -0.3329314487434807 2.6743151026988807e-08
+  hidden angularVelocity_20 13.31726075713112 8.42781514922121 -0.00027022647769147853
+  hidden rotation_21 0 0 -0.9999999999999999 5.960464477539063e-08
+  hidden position_21_0 39573.242668827144
+  hidden linearVelocity_21 0.21069573300862665 -0.33293147823950053 -2.7647597928379845e-08
+  hidden angularVelocity_21 -1.4150028915193657e-07 2.2667107268797922e-07 1.0532195929975349e-05
+  hidden rotation_22 -0.511701972554168 0.6075188803103518 0.6075211118559007 2.195665028778154
+  hidden linearVelocity_22 0.210695554431323 -0.33293159122414917 -2.7084304618346926e-08
+  hidden angularVelocity_22 13.31726528389139 8.427819590569193 -0.00023581660189658628
+  hidden rotation_23 0 0 1 1.6574485971313392e-06
+  hidden position_23_0 39526.18684123696
+  hidden linearVelocity_23 0.21069615448358053 -0.33293102809486025 2.7646758218206353e-08
+  hidden angularVelocity_23 -1.3532206848171183e-07 2.1561154494806222e-07 -3.360592515973938e-05
+  hidden rotation_24 0.6689512123731753 0.525595969354282 0.5255978999796248 4.320754348290889
+  hidden linearVelocity_24 0.21069663298651517 -0.3329307252382656 2.7116888257040957e-08
+  hidden angularVelocity_24 13.31722605739135 8.427869979869966 -0.0002736235690682575
+  hidden rotation_25 0 0 -1 2.628693231487457e-06
+  hidden position_25_0 39616.30007784104
+  hidden linearVelocity_25 0.21069585322997506 -0.33293140215638845 -2.7276009813936397e-08
+  hidden angularVelocity_25 -1.4908362091429272e-07 2.3786489834377326e-07 -1.7022864033448502e-05
+  hidden rotation_26 0.8529817367249851 -0.3690671728501272 -0.36906852851204 4.554034168349408
+  hidden linearVelocity_26 0.21069580756810058 -0.3329314310251149 -2.6725614283639898e-08
+  hidden angularVelocity_26 13.31726017480328 8.427827662864921 -0.0002630713501915475
+  translation 48.008864485960466 -30.479358341580163 0.09089750949307196
+  rotation 6.2195300972288765e-06 -2.1729382286605307e-05 0.9999999997445759 -1.0065703978945892
   name "TIAGO_2"
-  controller "tiago_lite"
-  customData "{\"mode\":\"auto\",\"speed_left\":0,\"speed_right\":0}"
+  customData "{\"mode\": \"auto\", \"speed_left\": 0.0, \"speed_right\": 0.0}"
 }
 ModernHouse {
   translation 26 41 0
@@ -191,6 +196,25 @@ ModernHouse {
 ModernHouse {
   translation 26 -10 0
   name "modern house(2)"
+}
+SnackStand {
+  translation 46.86 0 0
+  rotation 1.125069999996903e-14 -2.346399999993541e-06 0.9999999999972473 3.14159
+}
+SnackStand {
+  translation 46.86 29.2 0.000125386
+  rotation 0.13052598533503856 2.1531397580886943e-06 -0.9914448886083792 -3.1415853071795863
+  name "snack stand(1)"
+}
+SnackStand {
+  translation 46.86 0 0
+  rotation 1.125069999996903e-14 -2.346399999993541e-06 0.9999999999972473 3.14159
+  name "snack stand(2)"
+}
+SnackStand {
+  translation 46.46 -25.91 -0.000121589
+  rotation 1.125069999996903e-14 -2.346399999993541e-06 0.9999999999972473 3.14159
+  name "snack stand(3)"
 }
 ModernHouse {
   translation 26 -31 0
@@ -212,43 +236,72 @@ LargeResidentialTower {
   name "residential tower(2)"
 }
 DEF RANGEROVER RangeRoverSportSVR {
-  hidden position_0_0 -8.016734645024211e-09
-  hidden position2_0_0 0.02058399886674456
-  hidden position_0_1 -7.821765041982551e-09
-  hidden position2_0_1 0.02110162036660987
-  hidden position_0_2 0.015322473614314531
-  hidden position_0_3 0.015839972029556587
-  hidden rotation_1 3.9437548084460145e-09 -0.9999999999999217 3.9574704607730124e-07 0.02058299483362786
-  hidden rotation_2 -3.875107862764678e-09 0.9999999999999302 3.7406558980741727e-07 0.02110061677589222
-  hidden rotation_3 0 -0.9999999999999999 0 0.015321984819893927
-  hidden rotation_4 0 1 0 0.01583947961436913
-  translation 10.607688648210585 4.325333619756807 -0.14942691181215229
-  rotation 0.011379950559584908 0.05447092467023902 -0.9984505070812627 0.4125329924852547
+  hidden position_0_0 0.19027492492125844
+  hidden position2_0_0 88655.61154446093
+  hidden position_0_1 0.21240893032867167
+  hidden position2_0_1 88186.08347169925
+  hidden position_0_2 88635.40473002843
+  hidden position_0_3 88158.1003970121
+  hidden linearVelocity_0 -1.9750892427395968e-05 -7.803586908523774e-05 1.925286276964471e-06
+  hidden angularVelocity_0 -1.3199780023701107e-07 -1.659020536364766e-06 2.1896001801817466e-05
+  hidden rotation_1 0.05457027908006918 0.571862410680251 -0.8185325087570411 0.2321147043413448
+  hidden linearVelocity_1 -2.1833788937801955e-05 -4.673494173100613e-05 3.1137922376730078e-06
+  hidden angularVelocity_1 30.877095423010083 -23.404441689176867 -0.46377243502832727
+  hidden rotation_2 -0.10542232154927764 -0.9889005756694728 0.1046985461204982 4.694339316500905
+  hidden linearVelocity_2 -5.05839910834587e-05 -7.311600991473434e-05 7.417610967083632e-07
+  hidden angularVelocity_2 31.368428869647907 -22.72648736412227 -0.6581300712575168
+  hidden rotation_3 0 -1 0 4.7927869531823415
+  hidden linearVelocity_3 1.4585592479326825e-05 -9.089169779492745e-05 5.256297013411497e-07
+  hidden angularVelocity_3 26.04649524884818 -28.718598264556256 1.1989903187840778
+  hidden rotation_4 0 1 0 5.010537282496347
+  hidden linearVelocity_4 -1.1150348055748548e-05 -0.0001141016905501491 3.6696296735003237e-06
+  hidden angularVelocity_4 26.04642045146296 -28.71866514355634 1.1990132830457012
+  translation 22.559977290426467 11.917135597337221 0.615906422771459
+  rotation 0.92893830423671 0.35664457543974243 -0.09938950513626454 3.0320108873111797
   name "RANGEROVER"
   controller "autonomous_vehicle"
   sensorsSlotCenter [
     Camera {
       translation 2.5 0 0.4
       rotation 0 1 0 -1.5708
-      name "camera"
-      fieldOfView 1.0
+      fieldOfView 1
       width 320
       height 240
     }
     GPS {
-      name "gps"
     }
   ]
 }
 DEF CREATE Create {
-  translation 14 -2 0.05
-  rotation 0 0 1 1.5708
+  hidden position_0_0 17707.442653537604
+  hidden position_0_1 17507.34528459719
+  hidden linearVelocity_0 9.756542394412697e-05 0.00017044798131507085 -6.73200556117368e-06
+  hidden angularVelocity_0 3.244944604759075e-05 0.00013233367586253317 0.0013731419295145882
+  hidden rotation_1 0 1 0 1.4264579055295092
+  hidden linearVelocity_1 -5.6979215468490826e-05 0.00027814955721687187 -1.345666456593546e-05
+  hidden angularVelocity_1 -2.668508077402314 -4.228148145834106 -0.021770982298949637
+  hidden rotation_2 0 1 0 2.391018794863569
+  hidden linearVelocity_2 0.00025848680676872067 7.899019857651419e-05 -1.7035744288341615e-06
+  hidden angularVelocity_2 2.6685543547037995 4.228417336812226 0.024630228269401262
+  hidden translation_6 0.0007553066511185591 0.00036409663866976416 7.121339464655208e-05
+  hidden rotation_6 0.8442501368191553 -0.3789689472462745 -0.3789778931598622 1.739323218999656
+  hidden linearVelocity_6 0.00012614935676722895 -6.9165394695858144e-06 9.732223925098537e-06
+  hidden angularVelocity_6 3.24556835045095e-05 0.00013233560143194073 0.0013731495060006862
+  hidden translation_7 0.0007559864585964249 -0.0006502109512780407 -6.673160909231868e-05
+  hidden rotation_7 0.3025419767640851 -0.6739387767113636 -0.6739991673143748 2.554017270216598
+  hidden linearVelocity_7 -7.555176097467856e-05 0.00012056643246676083 2.1662617194806443e-06
+  hidden angularVelocity_7 3.244944624814412e-05 0.00013233367523987893 0.0013731419301383663
+  translation 47.30936039657503 29.00130394228668 0.044933920755385534
+  rotation 0.02061882156861149 -0.003449285981638794 -0.9997814594316792 -2.5786615389749614
   name "CREATE"
   controller "create_controller"
-  customData "{\"mode\":\"auto\",\"speed_left\":0,\"speed_right\":0}"
+  customData "{\"mode\": \"auto\", \"speed_left\": 0.0, \"speed_right\": 0.0}"
 }
 DEF BLIMP Blimp {
-  translation 6 6 8
+  hidden linearVelocity_0 -149.8904189368207 2.2853630021036384 -574.5726811953404
+  hidden angularVelocity_0 1.2187807461308664 -0.133818052968084 3.1903738786233005
+  translation -5529.93783639632 -8.872021049607381 -18372.74880280159
+  rotation -0.8188040512197059 0.4649179272553186 -0.3367658632088704 -2.5463515407002664
   name "BLIMP"
   controller "blimp_controller"
 }
@@ -258,7 +311,7 @@ DEF API_SUPERVISOR Robot {
       translation 0 0 70
       rotation -0.693384144456226 0 0.7205681287822183 -3.141592653589793
       name "god_camera"
-      fieldOfView 1.0
+      fieldOfView 1
       width 512
       height 512
     }
@@ -266,4 +319,524 @@ DEF API_SUPERVISOR Robot {
   name "API_SUPERVISOR"
   controller "api_supervisor"
   supervisor TRUE
+}
+AdvertisingBoard {
+  translation 50 0 0
+}
+AdvertisingBoard {
+  translation 50 0 0
+  name "advertising board(1)"
+}
+AdvertisingBoard {
+  translation 50 0 0
+  name "advertising board(2)"
+}
+AdvertisingBoard {
+  translation 50 0 0
+  name "advertising board(3)"
+}
+AdvertisingBoard {
+  translation 50 23.4 0
+  name "advertising board(4)"
+}
+AdvertisingBoard {
+  translation 50 44.3 0
+  name "advertising board(20)"
+}
+AdvertisingBoard {
+  translation 50 37.68 0
+  name "advertising board(21)"
+}
+AdvertisingBoard {
+  translation 50 29.87 0
+  name "advertising board(22)"
+}
+AdvertisingBoard {
+  translation 50 26.14 0
+  name "advertising board(23)"
+}
+AdvertisingBoard {
+  translation 50 19.82 0
+  name "advertising board(24)"
+}
+AdvertisingBoard {
+  translation 50 17.99 0
+  name "advertising board(25)"
+}
+AdvertisingBoard {
+  translation 50 14.01 0
+  name "advertising board(29)"
+}
+AdvertisingBoard {
+  translation 50 33.94 0
+  name "advertising board(26)"
+}
+AdvertisingBoard {
+  translation 50 40.85 0
+  name "advertising board(27)"
+}
+AdvertisingBoard {
+  translation 50 47.91 0
+  name "advertising board(28)"
+}
+AdvertisingBoard {
+  translation 50 0 0
+  name "advertising board(5)"
+}
+AdvertisingBoard {
+  translation 50 3.31 0
+  name "advertising board(6)"
+}
+AdvertisingBoard {
+  translation 50 0 0
+  name "advertising board(7)"
+}
+AdvertisingBoard {
+  translation 50 6.64 0
+  name "advertising board(8)"
+}
+AdvertisingBoard {
+  translation 50 -5.32 0
+  name "advertising board(9)"
+}
+AdvertisingBoard {
+  translation 50 -20.25 0
+  name "advertising board(10)"
+}
+AdvertisingBoard {
+  translation 50 -16.32 0
+  name "advertising board(11)"
+}
+AdvertisingBoard {
+  translation 50 -12.44 0
+  name "advertising board(12)"
+}
+AdvertisingBoard {
+  translation 50 -8.7 0
+  name "advertising board(13)"
+}
+AdvertisingBoard {
+  translation 50 -23.93 0
+  name "advertising board(14)"
+}
+AdvertisingBoard {
+  translation 50 -2.42 0
+  name "advertising board(15)"
+}
+AdvertisingBoard {
+  translation 50 0 0
+  name "advertising board(16)"
+}
+AdvertisingBoard {
+  translation 50 0 0
+  name "advertising board(17)"
+}
+AdvertisingBoard {
+  translation 50 -26.95 0
+  name "advertising board(18)"
+}
+AdvertisingBoard {
+  translation 50 -42.05 0
+  name "advertising board(30)"
+}
+AdvertisingBoard {
+  translation 50 -42.05 0
+  name "advertising board(64)"
+}
+AdvertisingBoard {
+  translation -49.95 -9.2 0
+  name "advertising board(31)"
+}
+AdvertisingBoard {
+  translation -49.95 -44.1 0
+  name "advertising board(79)"
+}
+AdvertisingBoard {
+  translation -49.95 -29.27 0
+  name "advertising board(80)"
+}
+AdvertisingBoard {
+  translation -49.95 -25.31 0
+  name "advertising board(81)"
+}
+AdvertisingBoard {
+  translation -49.95 -21.23 0
+  name "advertising board(82)"
+}
+AdvertisingBoard {
+  translation -49.95 -48.02 0
+  name "advertising board(83)"
+}
+AdvertisingBoard {
+  translation -49.95 -0.62 0
+  name "advertising board(69)"
+}
+AdvertisingBoard {
+  translation -49.95 39.69 0
+  name "advertising board(70)"
+}
+AdvertisingBoard {
+  translation -49.95 35.64 0
+  name "advertising board(90)"
+}
+AdvertisingBoard {
+  translation -49.95 31.73 0
+  name "advertising board(71)"
+}
+AdvertisingBoard {
+  translation -49.95 -36.58 0
+  name "advertising board(72)"
+}
+AdvertisingBoard {
+  translation -49.95 -32.55 0
+  name "advertising board(73)"
+}
+AdvertisingBoard {
+  translation -49.95 3.31 0
+  name "advertising board(74)"
+}
+AdvertisingBoard {
+  translation -49.95 -17.26 0
+  name "advertising board(75)"
+}
+AdvertisingBoard {
+  translation -49.95 -13.29 0
+  name "advertising board(76)"
+}
+AdvertisingBoard {
+  translation -49.95 19.06 0
+  name "advertising board(77)"
+}
+AdvertisingBoard {
+  translation -49.95 43.77 0
+  name "advertising board(85)"
+}
+AdvertisingBoard {
+  translation -49.95 23.36 0
+  name "advertising board(86)"
+}
+AdvertisingBoard {
+  translation -49.95 47.86 0
+  name "advertising board(87)"
+}
+AdvertisingBoard {
+  translation -49.95 27.48 0
+  name "advertising board(88)"
+}
+AdvertisingBoard {
+  translation -49.95 14.97 0
+  name "advertising board(89)"
+}
+AdvertisingBoard {
+  translation -49.95 -40.02 0
+  name "advertising board(78)"
+}
+AdvertisingBoard {
+  translation -49.95 11.09 0
+  name "advertising board(67)"
+}
+AdvertisingBoard {
+  translation -49.95 6.96 0
+  name "advertising board(84)"
+}
+AdvertisingBoard {
+  translation -49.95 -4.83 0
+  name "advertising board(68)"
+}
+AdvertisingBoard {
+  translation 50 -34.96 0
+  name "advertising board(32)"
+}
+AdvertisingBoard {
+  translation 50 -34.96 0
+  name "advertising board(65)"
+}
+AdvertisingBoard {
+  translation 50 -39.36 0
+  name "advertising board(66)"
+}
+AdvertisingBoard {
+  translation 50 -30.54 0
+  name "advertising board(35)"
+}
+AdvertisingBoard {
+  translation 50 -26.95 0
+  name "advertising board(33)"
+}
+AdvertisingBoard {
+  translation 50 -46.01 0
+  name "advertising board(34)"
+}
+AdvertisingBoard {
+  translation 50 -47.96 0
+  name "advertising board(36)"
+}
+AdvertisingBoard {
+  translation 9.79 -49.95 0
+  rotation 0 0 1 1.5708
+  name "advertising board(37)"
+}
+AdvertisingBoard {
+  translation 48 -49.95 0
+  rotation 0 0 1 1.5708
+  name "advertising board(38)"
+}
+AdvertisingBoard {
+  translation 40 -49.95 0
+  rotation 0 0 1 1.5708
+  name "advertising board(39)"
+}
+AdvertisingBoard {
+  translation 35.88 -49.95 0
+  rotation 0 0 1 1.5708
+  name "advertising board(54)"
+}
+AdvertisingBoard {
+  translation 31.75 -49.95 0
+  rotation 0 0 1 1.5708
+  name "advertising board(55)"
+}
+AdvertisingBoard {
+  translation 29.01 -49.95 0
+  rotation 0 0 1 1.5708
+  name "advertising board(57)"
+}
+AdvertisingBoard {
+  translation 43.98 -49.95 0
+  rotation 0 0 1 1.5708
+  name "advertising board(56)"
+}
+AdvertisingBoard {
+  translation 25.72 -49.95 0
+  rotation 0 0 1 1.5708
+  name "advertising board(40)"
+}
+AdvertisingBoard {
+  translation 21.74 -49.95 0
+  rotation 0 0 1 1.5708
+  name "advertising board(41)"
+}
+AdvertisingBoard {
+  translation 17.8 -49.95 0
+  rotation 0 0 1 1.5708
+  name "advertising board(42)"
+}
+AdvertisingBoard {
+  translation -5.56 -49.95 0
+  rotation 0 0 1 1.5708
+  name "advertising board(43)"
+}
+AdvertisingBoard {
+  translation 5.91 -49.95 0
+  rotation 0 0 1 1.5708
+  name "advertising board(44)"
+}
+AdvertisingBoard {
+  translation 2.22 -49.95 0
+  rotation 0 0 1 1.5708
+  name "advertising board(45)"
+}
+AdvertisingBoard {
+  translation -1.9 -49.95 0
+  rotation 0 0 1 1.5708
+  name "advertising board(46)"
+}
+AdvertisingBoard {
+  translation 13.65 -49.95 0
+  rotation 0 0 1 1.5708
+  name "advertising board(47)"
+}
+AdvertisingBoard {
+  translation 27.5 48.87 -4.02008e-07
+  rotation 9.58976e-09 9.58979e-09 -1 -1.5707953071795862
+  name "advertising board(91)"
+}
+AdvertisingBoard {
+  translation 23.51 48.87 -4.78538e-07
+  rotation 9.58976e-09 9.58979e-09 -1 -1.5707953071795862
+  name "advertising board(92)"
+}
+AdvertisingBoard {
+  translation 19.59 48.87 -5.53716e-07
+  rotation 9.58976e-09 9.58979e-09 -1 -1.5707953071795862
+  name "advertising board(93)"
+}
+AdvertisingBoard {
+  translation 15.48 48.87 -6.3255e-07
+  rotation 9.58976e-09 9.58979e-09 -1 -1.5707953071795862
+  name "advertising board(94)"
+}
+AdvertisingBoard {
+  translation 11.23 48.87 -7.14054e-07
+  rotation 9.58976e-09 9.58979e-09 -1 -1.5707953071795862
+  name "advertising board(95)"
+}
+AdvertisingBoard {
+  translation 7.1 48.87 -7.93264e-07
+  rotation 9.58976e-09 9.58979e-09 -1 -1.5707953071795862
+  name "advertising board(96)"
+}
+AdvertisingBoard {
+  translation 3.49 48.87 -8.62502e-07
+  rotation 9.58976e-09 9.58979e-09 -1 -1.5707953071795862
+  name "advertising board(97)"
+}
+AdvertisingBoard {
+  translation -0.55 48.87 -9.39989e-07
+  rotation 9.58976e-09 9.58979e-09 -1 -1.5707953071795862
+  name "advertising board(98)"
+}
+AdvertisingBoard {
+  translation -4.73 48.87 -1.02015e-06
+  rotation 9.58976e-09 9.58979e-09 -1 -1.5707953071795862
+  name "advertising board(99)"
+}
+AdvertisingBoard {
+  translation 48.2 48.87 -4.98816e-09
+  rotation 9.58976e-09 9.58979e-09 -1 -1.5707953071795862
+  name "advertising board(100)"
+}
+AdvertisingBoard {
+  translation 43.89 48.87 -8.76516e-08
+  rotation 9.58976e-09 9.58979e-09 -1 -1.5707953071795862
+  name "advertising board(105)"
+}
+AdvertisingBoard {
+  translation 42.67 48.87 -1.11052e-07
+  rotation 9.58976e-09 9.58979e-09 -1 -1.5707953071795862
+  name "advertising board(109)"
+}
+AdvertisingBoard {
+  translation 39.48 48.87 -1.72235e-07
+  rotation 9.58976e-09 9.58979e-09 -1 -1.5707953071795862
+  name "advertising board(106)"
+}
+AdvertisingBoard {
+  translation 35.42 48.87 -2.50104e-07
+  rotation 9.58976e-09 9.58979e-09 -1 -1.5707953071795862
+  name "advertising board(107)"
+}
+AdvertisingBoard {
+  translation 31.39 48.87 -3.27403e-07
+  rotation 9.58976e-09 9.58979e-09 -1 -1.5707953071795862
+  name "advertising board(108)"
+}
+AdvertisingBoard {
+  translation -9.01 48.87 -1.10223e-06
+  rotation 9.58976e-09 9.58979e-09 -1 -1.5707953071795862
+  name "advertising board(101)"
+}
+AdvertisingBoard {
+  translation -12.53 48.87 -1.16979e-06
+  rotation 9.58976e-09 9.58979e-09 -1 -1.5707953071795862
+  name "advertising board(116)"
+}
+AdvertisingBoard {
+  translation -16.24 48.87 -1.24091e-06
+  rotation 9.58976e-09 9.58979e-09 -1 -1.5707953071795862
+  name "advertising board(102)"
+}
+AdvertisingBoard {
+  translation -31.74 48.87 -1.53826e-06
+  rotation 9.58976e-09 9.58979e-09 -1 -1.5707953071795862
+  name "advertising board(103)"
+}
+AdvertisingBoard {
+  translation -23.88 48.87 -1.38755e-06
+  rotation 9.58976e-09 9.58979e-09 -1 -1.5707953071795862
+  name "advertising board(112)"
+}
+AdvertisingBoard {
+  translation -20.14 48.87 -1.31583e-06
+  rotation 9.58976e-09 9.58979e-09 -1 -1.5707953071795862
+  name "advertising board(113)"
+}
+AdvertisingBoard {
+  translation -28.01 48.87 -1.46671e-06
+  rotation 9.58976e-09 9.58979e-09 -1 -1.5707953071795862
+  name "advertising board(114)"
+}
+AdvertisingBoard {
+  translation -35.79 48.87 -1.616e-06
+  rotation 9.58976e-09 9.58979e-09 -1 -1.5707953071795862
+  name "advertising board(115)"
+}
+AdvertisingBoard {
+  translation -39.65 48.87 -1.68993e-06
+  rotation 9.58976e-09 9.58979e-09 -1 -1.5707953071795862
+  name "advertising board(104)"
+}
+AdvertisingBoard {
+  translation -47.68 48.87 -1.84395e-06
+  rotation 9.58976e-09 9.58979e-09 -1 -1.5707953071795862
+  name "advertising board(110)"
+}
+AdvertisingBoard {
+  translation -43.73 48.87 -1.76828e-06
+  rotation 9.58976e-09 9.58979e-09 -1 -1.5707953071795862
+  name "advertising board(111)"
+}
+AdvertisingBoard {
+  translation -9.47 -49.95 0
+  rotation 0 0 1 1.5708
+  name "advertising board(48)"
+}
+AdvertisingBoard {
+  translation -32.25 -49.95 0
+  rotation 0 0 1 1.5708
+  name "advertising board(49)"
+}
+AdvertisingBoard {
+  translation -28.3 -49.95 0
+  rotation 0 0 1 1.5708
+  name "advertising board(58)"
+}
+AdvertisingBoard {
+  translation -30.53 -49.95 0
+  rotation 0 0 1 1.5708
+  name "advertising board(59)"
+}
+AdvertisingBoard {
+  translation -39.69 -49.95 0
+  rotation 0 0 1 1.5708
+  name "advertising board(60)"
+}
+AdvertisingBoard {
+  translation -43.68 -49.95 0
+  rotation 0 0 1 1.5708
+  name "advertising board(61)"
+}
+AdvertisingBoard {
+  translation -35.83 -49.95 0
+  rotation 0 0 1 1.5708
+  name "advertising board(62)"
+}
+AdvertisingBoard {
+  translation -47.72 -49.95 0
+  rotation 0 0 1 1.5708
+  name "advertising board(63)"
+}
+AdvertisingBoard {
+  translation -24.74 -49.95 0
+  rotation 0 0 1 1.5708
+  name "advertising board(50)"
+}
+AdvertisingBoard {
+  translation -21.02 -49.95 0
+  rotation 0 0 1 1.5708
+  name "advertising board(51)"
+}
+AdvertisingBoard {
+  translation -17.18 -49.95 0
+  rotation 0 0 1 1.5708
+  name "advertising board(52)"
+}
+AdvertisingBoard {
+  translation -13.16 -49.95 0
+  rotation 0 0 1 1.5708
+  name "advertising board(53)"
+}
+AdvertisingBoard {
+  translation 50 10.57 0
+  name "advertising board(19)"
 }

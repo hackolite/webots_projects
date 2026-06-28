@@ -209,6 +209,7 @@ PROTO Blimp [
             children [
               Shape {
                 appearance PBRAppearance {
+                  baseColor 1 0 1
                   metalness 0
                   roughness 0.6
                 }

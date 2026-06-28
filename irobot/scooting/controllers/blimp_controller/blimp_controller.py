@@ -265,7 +265,6 @@ print("  Auto-stab attitude, altitude et cap ACTIFS\n")
 cam_pub = CameraPublisher(robot.getName())
 
 while robot.step(timestep) != -1:
-
     # Fix écran noir caméra
     if camera:
         camera.getImage()
