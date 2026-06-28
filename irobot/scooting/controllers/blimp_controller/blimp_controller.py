@@ -209,7 +209,7 @@ for _ in range(int(2000 / timestep)):
 print("[BLIMP] Pret !\n")
 
 # ============================================================
-# Etat interne
+# Etat interne (initialisations requises avant reset_kinematics)
 # ============================================================
 vx   = 0.0
 vz   = 0.0
@@ -255,14 +255,96 @@ def smooth(current, target, rate):
 def clamp(val, lo, hi):
     return max(lo, min(hi, val))
 
+# ============================================================
+# Reset cinematique complet
+# ============================================================
+def reset_kinematics():
+    """Remet a zero toute la cinematique interne du blimp.
+
+    Appele au demarrage (apres la stabilisation initiale) et via la
+    touche F pendant la simulation.  Arrete les moteurs horizontaux,
+    repart du stationnaire vertical et re-capture les valeurs capteurs
+    courantes comme nouvelles cibles de maintien.
+    """
+    global vx, vz, vyaw
+    global cmd_x_smooth, cmd_yaw_smooth, cmd_z_smooth
+    global in_cruise_pitch
+    global target_altitude, alt_error_prev, alt_integral
+    global roll_prev, pitch_prev
+    global target_heading, yaw_hold_active, heading_err_prev
+    global target_pos_x, target_pos_y, pos_hold_active
+    global prev_pos_x, prev_pos_y, vel_est_x, vel_est_y
+
+    # --- Vitesses et commandes smoothees ---
+    vx = vz = vyaw = 0.0
+    cmd_x_smooth = cmd_yaw_smooth = cmd_z_smooth = 0.0
+
+    # --- Mode croisiere pitch ---
+    in_cruise_pitch = False
+
+    # --- PID altitude ---
+    alt_integral   = 0.0
+    alt_error_prev = 0.0
+
+    # --- IMU previous values (re-capture pour eviter un spike de taux de changement) ---
+    if imu:
+        rpy = imu.getRollPitchYaw()
+        roll_prev  = rpy[0]
+        pitch_prev = rpy[1]
+    else:
+        roll_prev  = 0.0
+        pitch_prev = 0.0
+
+    # --- Vitesse GPS estimee ---
+    vel_est_x = vel_est_y = 0.0
+    prev_pos_x = prev_pos_y = None
+
+    # --- Re-capture capteurs courants comme nouvelles cibles ---
+    if gps:
+        pos = gps.getValues()
+        target_altitude = pos[2]
+        target_pos_x    = pos[0]
+        target_pos_y    = pos[1]
+        pos_hold_active = True
+        print(f"[RESET] Altitude cible : {target_altitude:.2f} m  "
+              f"Pos cible : ({target_pos_x:.2f}, {target_pos_y:.2f})")
+    else:
+        target_altitude = None
+        target_pos_x    = None
+        target_pos_y    = None
+        pos_hold_active = False
+
+    if imu:
+        rpy = imu.getRollPitchYaw()
+        target_heading   = rpy[2]
+        yaw_hold_active  = True
+        heading_err_prev = 0.0
+        print(f"[RESET] Cap cible : {math.degrees(target_heading):.2f}°")
+    else:
+        target_heading   = None
+        yaw_hold_active  = False
+        heading_err_prev = 0.0
+
+    # --- Couper les moteurs horizontaux, maintenir altitude ---
+    if m1: m1.setVelocity(0.0)
+    if m2: m2.setVelocity(0.0)
+    if m3: m3.setVelocity(HOVER_OMEGA)
+
+    print("[RESET] Cinematique remise a zero.")
+
 print("Controles :")
 print("  FLECHES (Haut/Bas) avant/arriere   FLECHES (Gauche/Droite) lacet   A/E altitude")
 print("  Combinaisons libres (ex. avant + lacet simultanes)")
 print("  ESPACE stop + gel altitude/cap    R frein urgence")
+print("  F     reset cinematique complet (remet a zero vitesses, PID et cibles)")
 print("  Auto-stab attitude, altitude et cap ACTIFS\n")
 
 # Camera + sensor publishing for the REST API (read-only camera robot)
 cam_pub = CameraPublisher(robot.getName())
+
+# Reset cinematique initial : re-capture les capteurs apres la stabilisation
+reset_kinematics()
+print("[BLIMP] Reset cinematique initial effectue.\n")
 
 while robot.step(timestep) != -1:
     # Fix écran noir caméra
@@ -364,6 +446,9 @@ while robot.step(timestep) != -1:
 
     if keys & {ord('R'), ord('r')}:
         braking = True
+
+    if keys & {ord('F'), ord('f')}:
+        reset_kinematics()
 
     if ord(' ') in keys:
         cmd_x_smooth = cmd_yaw_smooth = cmd_z_smooth = 0.0
