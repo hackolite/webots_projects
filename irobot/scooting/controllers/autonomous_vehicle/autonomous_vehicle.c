@@ -311,6 +311,35 @@ double applyPID(double yellow_line_angle) {
   return KP * yellow_line_angle + KI * integral + KD * diff;
 }
 
+// Robot id used to name the IPC files read by api_supervisor.py
+#define RANGEROVER_ID "RANGEROVER"
+
+// Publish the on-board camera (JPEG file, atomic) and a small JSON sensor
+// snapshot so that api_supervisor can re-serve them through the REST API.
+void publish_state() {
+  if (has_camera) {
+    const char *cam_tmp = "/tmp/webots_" RANGEROVER_ID "_camera.jpg.tmp";
+    const char *cam_final = "/tmp/webots_" RANGEROVER_ID "_camera.jpg";
+    if (wb_camera_save_image(camera, cam_tmp, 75) == 0)
+      rename(cam_tmp, cam_final);
+  }
+
+  const char *json_tmp = "/tmp/webots_" RANGEROVER_ID "_state.json.tmp";
+  const char *json_final = "/tmp/webots_" RANGEROVER_ID "_state.json";
+  FILE *f = fopen(json_tmp, "w");
+  if (f) {
+    fprintf(f,
+            "{\"name\": \"%s\", \"time\": %f, \"speed_kmh\": %f, "
+            "\"steering_angle\": %f, \"autodrive\": %s, "
+            "\"gps\": [%f, %f, %f]}",
+            RANGEROVER_ID, wb_robot_get_time(), gps_speed, steering_angle,
+            autodrive ? "true" : "false", gps_coords[X], gps_coords[Y],
+            gps_coords[Z]);
+    fclose(f);
+    rename(json_tmp, json_final);
+  }
+}
+
 int main(int argc, char **argv) {
   wbu_driver_init();
 
@@ -437,6 +466,9 @@ int main(int argc, char **argv) {
         compute_gps_speed();
       if (enable_display)
         update_display();
+
+      // publish camera + sensors for the REST API
+      publish_state();
     }
 
     ++i;
