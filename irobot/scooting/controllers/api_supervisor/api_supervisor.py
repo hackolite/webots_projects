@@ -142,7 +142,7 @@ _robot_shm_last_seq = {rid: 0 for rid in CAMERA_ROBOTS}
 # DEF names that were successfully resolved at start-up (populated in main()).
 # Used by Flask endpoints to return 503 immediately instead of hanging when a
 # robot's node is absent from the scene.
-_nodes_found: set = set()
+_active_robot_nodes: set = set()
 
 
 # ── JPEG encoding helper (god camera) ────────────────────────────────────────
@@ -309,7 +309,7 @@ def robot_camera(rid):
     rid = _resolve_rid(rid)
     if rid not in CAMERA_ROBOTS:
         return jsonify({"error": "no camera for this robot"}), 404
-    if rid not in _nodes_found:
+    if rid not in _active_robot_nodes:
         return jsonify({"error": "robot not active in simulation"}), 503
     with _robot_cam_cond[rid]:
         frame = _robot_frames[rid]
@@ -324,7 +324,7 @@ def robot_camera_mjpeg(rid):
     rid = _resolve_rid(rid)
     if rid not in CAMERA_ROBOTS:
         return jsonify({"error": "no camera for this robot"}), 404
-    if rid not in _nodes_found:
+    if rid not in _active_robot_nodes:
         return jsonify({"error": "robot not active in simulation"}), 503
     cond = _robot_cam_cond[rid]
     return Response(
@@ -341,7 +341,7 @@ def robot_camera_mjpeg(rid):
 @app.get("/god/camera")
 def god_camera():
     if Image is None:
-        return jsonify({"error": "Pillow not installed; god camera unavailable"}), 503
+        return jsonify({"error": "Image processing library unavailable; god camera requires PIL/Pillow"}), 503
     with _god_cam_cond:
         frame = _god_frame
     if not frame:
@@ -353,7 +353,7 @@ def god_camera():
 @app.get("/god/camera/stream")
 def god_camera_mjpeg():
     if Image is None:
-        return jsonify({"error": "Pillow not installed; god camera unavailable"}), 503
+        return jsonify({"error": "Image processing library unavailable; god camera requires PIL/Pillow"}), 503
     return Response(
         _camera_stream(_god_cam_cond, lambda: _god_frame, lambda: _god_frame_seq),
         mimetype="multipart/x-mixed-replace; boundary=frame",
@@ -451,7 +451,7 @@ def main():
 
     # Record which nodes were actually resolved so Flask endpoints can return
     # 503 immediately for absent robots rather than hanging indefinitely.
-    _nodes_found.update(rid for rid, node in nodes.items() if node is not None)
+    _active_robot_nodes.update(rid for rid, node in nodes.items() if node is not None)
 
     # Create shared-memory blocks as early as possible so robot controllers
     # can attach to them during their own start-up (before the first step).
