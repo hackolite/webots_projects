@@ -7,7 +7,6 @@ EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/project
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/robots/pal_robotics/tiago_lite/protos/TiagoLite.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/buildings/protos/BungalowStyleHouse.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/buildings/protos/LargeResidentialTower.proto"
-EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/vehicles/protos/range_rover/RangeRoverSportSVR.proto"
 EXTERNPROTO "../protos/Blimp.proto"
 EXTERNPROTO "../protos/Create.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/obstacles/protos/OilBarrel.proto"
@@ -234,23 +233,6 @@ LargeResidentialTower {
 LargeResidentialTower {
   translation -5 -37 0
   name "residential tower(2)"
-}
-DEF RANGEROVER RangeRoverSportSVR {
-  translation 22.56 11.92 0.4
-  rotation 0 0 1 0
-  name "RANGEROVER"
-  controller "autonomous_vehicle"
-  sensorsSlotCenter [
-    Camera {
-      translation 2.5 0 0.4
-      rotation 0 1 0 -1.5708
-      fieldOfView 1
-      width 320
-      height 240
-    }
-    GPS {
-    }
-  ]
 }
 DEF CREATE Create {
   hidden position_0_0 17707.442653537604
