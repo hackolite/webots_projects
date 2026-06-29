@@ -41,19 +41,94 @@ The supervisor writes a small JSON document into each controllable robot's
 
 Endpoints
 ─────────
-GET  /robots                         → state of all robots
-GET  /robots/{id}                    → position, status, sensors
-GET  /robots/{id}/sensors            → robot internal sensor data only
-POST /robots/{id}/move               → { "speed_left": f, "speed_right": f }
-POST /robots/{id}/stop               → halt + pause obstacle avoidance
-POST /robots/{id}/start              → resume obstacle avoidance (mode=auto)
-GET  /robots/{id}/camera             → JPEG snapshot as base64 JSON
-GET  /robots/{id}/camera/stream      → MJPEG live stream
-GET  /god/camera                     → top-down god-view snapshot as base64 JSON
-GET  /god/camera/stream              → MJPEG live stream
-POST /simulation/pause               → pause the simulation
-POST /simulation/resume              → resume the simulation
-GET  /simulation/time                → current simulated time
+GET /robots
+    List all robots.
+    Response 200 – JSON array of robot state objects (see GET /robots/{id}).
+
+GET /robots/{id}
+    Full state of one robot.
+    Path: id = "TIAGO_1" | "TIAGO_2" | "CREATE" | "BLIMP" | "RANGEROVER"
+          or numeric aliases "1" / "2" / "3" for the controllable robots.
+    Response 200::
+
+        {
+          "id":           "TIAGO_1",
+          "controllable": true,
+          "has_camera":   true,
+          "position":     {"x": 0.0, "y": 0.0, "z": 0.0},
+          "rotation":     {"ax": 0.0, "ay": 0.0, "az": 1.0, "angle": 0.0},
+          "mode":         "auto" | "manual" | "stopped",
+          "speed_left":   0.0,
+          "speed_right":  0.0,
+          "sensors":      { <sensor_key>: <value>, ... }
+        }
+
+    Response 404: ``{"error": "robot not found"}``
+
+GET /robots/{id}/sensors
+    Raw sensor data published by the robot controller.
+    Response 200: ``{"robot_id": str, "sensors": {...}}``
+    Response 503: ``{"error": "no sensor data available yet"}``
+    Response 404: ``{"error": "robot not found"}``
+
+POST /robots/{id}/move
+    Set wheel speeds directly (manual drive).  Controllable robots only.
+    Request body: ``{"speed_left": <float>, "speed_right": <float>}``
+    Speeds are clamped to ±MAX_SPEED (10.4 rad/s).  Sets mode to ``"manual"``
+    and suspends obstacle avoidance until ``POST /start`` is called.
+    Response 200: ``{"ok": true, "mode": "manual"}``
+    Response 403: ``{"error": "robot is not controllable"}``
+    Response 404: ``{"error": "robot not found"}``
+
+POST /robots/{id}/stop
+    Halt the robot and suspend obstacle avoidance.  Controllable robots only.
+    Sets both wheel speeds to 0 and mode to ``"stopped"``.
+    Response 200: ``{"ok": true, "mode": "stopped"}``
+    Response 403: ``{"error": "robot is not controllable"}``
+    Response 404: ``{"error": "robot not found"}``
+
+POST /robots/{id}/start
+    Resume autonomous obstacle-avoidance behaviour.  Controllable robots only.
+    Sets mode back to ``"auto"``; the robot controller re-enables its built-in
+    avoidance logic.
+    Response 200: ``{"ok": true, "mode": "auto"}``
+    Response 403: ``{"error": "robot is not controllable"}``
+    Response 404: ``{"error": "robot not found"}``
+
+GET /robots/{id}/camera
+    Latest camera snapshot as a base64-encoded JPEG.
+    Available for all robots in CAMERA_ROBOTS (TIAGO_1, TIAGO_2, CREATE,
+    BLIMP, RANGEROVER).  Python robots use POSIX shared memory; the C
+    Range Rover controller falls back to ``/tmp/webots_{id}_camera.jpg``.
+    Response 200: ``{"robot_id": str, "format": "jpeg", "data": "<base64>"}``
+    Response 503: ``{"error": "no image available yet"}``
+    Response 404: ``{"error": "no camera for this robot"}``
+
+GET /robots/{id}/camera/stream
+    MJPEG live stream of the robot's on-board camera.
+    Content-Type: ``multipart/x-mixed-replace; boundary=frame``
+    Response 404: ``{"error": "no camera for this robot"}``
+
+GET /god/camera
+    Top-down god-view camera snapshot.
+    Response 200: ``{"source": "god_camera", "format": "jpeg", "data": "<base64>"}``
+    Response 503: ``{"error": "no image available yet"}``
+
+GET /god/camera/stream
+    MJPEG live stream of the top-down god camera.
+    Content-Type: ``multipart/x-mixed-replace; boundary=frame``
+
+POST /simulation/pause
+    Pause the simulation (applied on the next supervisor step).
+    Response 200: ``{"ok": true}``
+
+POST /simulation/resume
+    Resume a paused simulation (applied on the next supervisor step).
+    Response 200: ``{"ok": true}``
+
+GET /simulation/time
+    Current simulated time.
+    Response 200: ``{"time": <float>}``  (seconds since simulation start)
 """
 
 import base64
@@ -231,11 +306,44 @@ def _robot_public_state(rid):
 
 @app.get("/robots")
 def get_robots():
+    """Return the state of all robots in the scene.
+
+    GET /robots
+
+    Response 200 – JSON array of robot state objects, one per robot in
+    ``ROBOT_DEFS`` (TIAGO_1, TIAGO_2, CREATE, BLIMP, RANGEROVER).
+    Each element has the same structure as ``GET /robots/{id}``.
+    """
     return jsonify([_robot_public_state(rid) for rid in ROBOT_DEFS])
 
 
 @app.get("/robots/<rid>")
 def get_robot(rid):
+    """Return the full state of a single robot.
+
+    GET /robots/{id}
+
+    Path parameter:
+        id – Robot identifier: "TIAGO_1", "TIAGO_2", "CREATE", "BLIMP",
+             "RANGEROVER", or numeric aliases "1" / "2" / "3" for the
+             controllable robots.
+
+    Response 200::
+
+        {
+          "id":           "TIAGO_1",
+          "controllable": true,
+          "has_camera":   true,
+          "position":     {"x": 0.0, "y": 0.0, "z": 0.0},
+          "rotation":     {"ax": 0.0, "ay": 0.0, "az": 1.0, "angle": 0.0},
+          "mode":         "auto" | "manual" | "stopped",
+          "speed_left":   0.0,
+          "speed_right":  0.0,
+          "sensors":      { <sensor_key>: <value>, ... }
+        }
+
+    Response 404: ``{"error": "robot not found"}``
+    """
     rid = _resolve_rid(rid)
     if rid not in _robots:
         return jsonify({"error": "robot not found"}), 404
@@ -244,6 +352,22 @@ def get_robot(rid):
 
 @app.get("/robots/<rid>/sensors")
 def robot_sensors(rid):
+    """Return raw sensor data published by the robot controller.
+
+    GET /robots/{id}/sensors
+
+    The sensor document is written by the robot controller to
+    ``/tmp/webots_{id}_state.json`` every step and typically contains
+    distance-sensor readings, wheel encoder values and IMU data.
+
+    Response 200::
+
+        {"robot_id": "TIAGO_1", "sensors": { <sensor_key>: <value>, ... }}
+
+    Response 503: ``{"error": "no sensor data available yet"}`` – the
+    controller has not yet written its first snapshot.
+    Response 404: ``{"error": "robot not found"}``
+    """
     rid = _resolve_rid(rid)
     if rid not in _robots:
         return jsonify({"error": "robot not found"}), 404
@@ -255,6 +379,23 @@ def robot_sensors(rid):
 
 @app.post("/robots/<rid>/move")
 def move_robot(rid):
+    """Set the wheel speeds for direct manual driving.
+
+    POST /robots/{id}/move
+
+    Only controllable robots (TIAGO_1, TIAGO_2, CREATE) accept this command.
+
+    Request body (JSON)::
+
+        {"speed_left": <float>, "speed_right": <float>}
+
+    Both values are clamped to ±MAX_SPEED (10.4 rad/s).  Sets mode to
+    ``"manual"``; obstacle avoidance is suspended until ``POST /start`` is called.
+
+    Response 200: ``{"ok": true, "mode": "manual"}``
+    Response 403: ``{"error": "robot is not controllable"}``
+    Response 404: ``{"error": "robot not found"}``
+    """
     rid = _resolve_rid(rid)
     if rid not in _robots:
         return jsonify({"error": "robot not found"}), 404
@@ -272,7 +413,18 @@ def move_robot(rid):
 
 @app.post("/robots/<rid>/stop")
 def stop_robot(rid):
-    """Halt the robot and suspend its obstacle-avoidance behaviour."""
+    """Halt the robot and suspend its obstacle-avoidance behaviour.
+
+    POST /robots/{id}/stop
+
+    Only controllable robots (TIAGO_1, TIAGO_2, CREATE) accept this command.
+    Zeroes both wheel speeds and sets mode to ``"stopped"``.  Obstacle
+    avoidance remains suspended until ``POST /start`` is called.
+
+    Response 200: ``{"ok": true, "mode": "stopped"}``
+    Response 403: ``{"error": "robot is not controllable"}``
+    Response 404: ``{"error": "robot not found"}``
+    """
     rid = _resolve_rid(rid)
     if rid not in _robots:
         return jsonify({"error": "robot not found"}), 404
@@ -287,7 +439,18 @@ def stop_robot(rid):
 
 @app.post("/robots/<rid>/start")
 def start_robot(rid):
-    """Resume the robot's autonomous obstacle-avoidance behaviour."""
+    """Resume the robot's autonomous obstacle-avoidance behaviour.
+
+    POST /robots/{id}/start
+
+    Only controllable robots (TIAGO_1, TIAGO_2, CREATE) accept this command.
+    Sets mode to ``"auto"``; the robot controller re-enables its built-in
+    avoidance logic on the next step.
+
+    Response 200: ``{"ok": true, "mode": "auto"}``
+    Response 403: ``{"error": "robot is not controllable"}``
+    Response 404: ``{"error": "robot not found"}``
+    """
     rid = _resolve_rid(rid)
     if rid not in _robots:
         return jsonify({"error": "robot not found"}), 404
@@ -300,6 +463,22 @@ def start_robot(rid):
 
 @app.get("/robots/<rid>/camera")
 def robot_camera(rid):
+    """Return the latest camera frame as a base64-encoded JPEG snapshot.
+
+    GET /robots/{id}/camera
+
+    Available for all robots in CAMERA_ROBOTS (TIAGO_1, TIAGO_2, CREATE,
+    BLIMP, RANGEROVER).  Python-based robots use POSIX shared memory
+    (``webots_{id}_camera_shm``); the C Range Rover controller writes a JPEG
+    file at ``/tmp/webots_{id}_camera.jpg``.
+
+    Response 200::
+
+        {"robot_id": "TIAGO_1", "format": "jpeg", "data": "<base64-string>"}
+
+    Response 503: ``{"error": "no image available yet"}`` – no frame published yet.
+    Response 404: ``{"error": "no camera for this robot"}``
+    """
     rid = _resolve_rid(rid)
     if rid not in CAMERA_ROBOTS:
         return jsonify({"error": "no camera for this robot"}), 404
@@ -313,6 +492,17 @@ def robot_camera(rid):
 
 @app.get("/robots/<rid>/camera/stream")
 def robot_camera_mjpeg(rid):
+    """Stream the robot camera as a live MJPEG feed.
+
+    GET /robots/{id}/camera/stream
+
+    Blocks efficiently on a per-robot ``threading.Condition``; a new MJPEG
+    part is pushed to the client only when the supervisor main loop publishes
+    a new frame from shared memory (no polling overhead).
+
+    Content-Type: ``multipart/x-mixed-replace; boundary=frame``
+    Response 404: ``{"error": "no camera for this robot"}``
+    """
     rid = _resolve_rid(rid)
     if rid not in CAMERA_ROBOTS:
         return jsonify({"error": "no camera for this robot"}), 404
@@ -329,6 +519,19 @@ def robot_camera_mjpeg(rid):
 
 @app.get("/god/camera")
 def god_camera():
+    """Return the latest top-down god-view camera snapshot.
+
+    GET /god/camera
+
+    The supervisor encodes a JPEG from the ``god_camera`` Webots device each
+    simulation step.
+
+    Response 200::
+
+        {"source": "god_camera", "format": "jpeg", "data": "<base64-string>"}
+
+    Response 503: ``{"error": "no image available yet"}``
+    """
     with _god_cam_cond:
         frame = _god_frame
     if not frame:
@@ -339,6 +542,12 @@ def god_camera():
 
 @app.get("/god/camera/stream")
 def god_camera_mjpeg():
+    """Stream the top-down god-view camera as a live MJPEG feed.
+
+    GET /god/camera/stream
+
+    Content-Type: ``multipart/x-mixed-replace; boundary=frame``
+    """
     return Response(
         _camera_stream(_god_cam_cond, lambda: _god_frame, lambda: _god_frame_seq),
         mimetype="multipart/x-mixed-replace; boundary=frame",
@@ -347,6 +556,15 @@ def god_camera_mjpeg():
 
 @app.post("/simulation/pause")
 def sim_pause():
+    """Pause the Webots simulation.
+
+    POST /simulation/pause
+
+    The pause is applied on the next supervisor step (not instantaneously).
+    Has no effect if the simulation is already paused.
+
+    Response 200: ``{"ok": true}``
+    """
     global _pending_pause
     with _lock:
         _pending_pause = True
@@ -355,6 +573,15 @@ def sim_pause():
 
 @app.post("/simulation/resume")
 def sim_resume():
+    """Resume the Webots simulation after a pause.
+
+    POST /simulation/resume
+
+    The resume is applied on the next supervisor step.
+    Has no effect if the simulation is already running.
+
+    Response 200: ``{"ok": true}``
+    """
     global _pending_resume
     with _lock:
         _pending_resume = True
@@ -363,6 +590,14 @@ def sim_resume():
 
 @app.get("/simulation/time")
 def sim_time():
+    """Return the current simulated time.
+
+    GET /simulation/time
+
+    Response 200::
+
+        {"time": <float>}   # seconds since simulation start
+    """
     with _lock:
         t = _sim_time
     return jsonify({"time": t})

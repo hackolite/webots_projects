@@ -6,21 +6,99 @@ the robots in the Webots simulation.
 
 Endpoints
 ─────────
-GET  /robots                         → state of all robots
-GET  /robots/{id}                    → position, sensors, status
-GET  /robots/{id}/sensors            → robot internal sensor data only
-POST /robots/{id}/move               → { "speed_left": f, "speed_right": f }
-POST /robots/{id}/goto               → { "x": f, "z": f }  (autonomous navigation)
-POST /robots/{id}/stop               → immediate stop
-GET  /robots/{id}/camera             → JPEG image as base64 JSON (snapshot)
-GET  /robots/{id}/camera/stream      → MJPEG live stream
-GET  /god/camera                     → top-down god-view camera image as base64 JSON (snapshot)
-GET  /god/camera/stream              → MJPEG live stream
-GET  /robots/ceiling/camera          → bedroom ceiling camera image as base64 JSON (snapshot)
-GET  /robots/ceiling/camera/stream   → MJPEG live stream
-POST /simulation/pause               → pause the simulation
-POST /simulation/resume              → resume the simulation
-GET  /simulation/time                → current simulated time
+GET /robots
+    List all robots.
+    Response 200 – JSON array of robot state objects (see GET /robots/{id}).
+
+GET /robots/{id}
+    Full state of one robot.
+    Path: id = "ROBOT_1" | "ROBOT_2" | "1" | "2"  (numeric aliases accepted).
+    Response 200::
+
+        {
+          "id":          "ROBOT_1",
+          "position":    {"x": 0.0, "y": 0.0, "z": 0.0},
+          "rotation":    {"ax": 0.0, "ay": 0.0, "az": 1.0, "angle": 0.0},
+          "speed_left":  0.0,
+          "speed_right": 0.0,
+          "status":      "idle" | "moving" | "navigating" | "stopped",
+          "goto_target": {"x": 1.0, "z": 0.5} | null,
+          "sensors":     { <sensor_key>: <value>, ... }
+        }
+
+    Response 404: ``{"error": "robot not found"}``
+
+GET /robots/{id}/sensors
+    Raw sensor data published by the robot controller.
+    Response 200: ``{"robot_id": str, "sensors": {...}}``
+    Response 503: ``{"error": "no sensor data available yet"}``
+    Response 404: ``{"error": "robot not found"}``
+
+POST /robots/{id}/move
+    Set wheel speeds directly (manual drive).
+    Request body: ``{"speed_left": <float>, "speed_right": <float>}``
+    Speeds are clamped to ±MAX_SPEED (16.0 rad/s).  Cancels any active goto
+    target and sets status to ``"moving"``.
+    Response 200: ``{"ok": true}``
+    Response 404: ``{"error": "robot not found"}``
+
+POST /robots/{id}/goto
+    Navigate autonomously to a world position.
+    Request body: ``{"x": <float>, "z": <float>}``
+    The API ``z`` field maps to the **world Y axis** (Webots VRML convention).
+    Sets status to ``"navigating"``; a proportional controller drives the robot
+    each step until it reaches the target (within GOTO_ARRIVAL_DIST metres).
+    Response 200: ``{"ok": true, "target": {"x": <float>, "z": <float>}}``
+    Response 400: ``{"error": "body must contain numeric x and z"}``
+    Response 404: ``{"error": "robot not found"}``
+
+POST /robots/{id}/stop
+    Immediately halt the robot and cancel any active goto target.
+    Sets status to ``"stopped"``.
+    Response 200: ``{"ok": true}``
+    Response 404: ``{"error": "robot not found"}``
+
+GET /robots/{id}/camera
+    Latest camera snapshot as a base64-encoded JPEG.
+    Frame is sourced from shared memory (fast path) or the file fallback.
+    Response 200: ``{"robot_id": str, "format": "jpeg", "data": "<base64>"}``
+    Response 503: ``{"error": "no image available yet"}``
+    Response 404: ``{"error": "robot not found"}``
+
+GET /robots/{id}/camera/stream
+    MJPEG live stream of the robot's front camera.
+    Content-Type: ``multipart/x-mixed-replace; boundary=frame``
+    Response 404: ``{"error": "robot not found"}``
+
+GET /god/camera
+    Top-down god-view camera snapshot.
+    Response 200: ``{"source": "god_camera", "format": "jpeg", "data": "<base64>"}``
+    Response 503: ``{"error": "no image available yet"}``
+
+GET /god/camera/stream
+    MJPEG live stream of the top-down god camera.
+    Content-Type: ``multipart/x-mixed-replace; boundary=frame``
+
+GET /robots/ceiling/camera
+    Bedroom ceiling camera snapshot.
+    Response 200: ``{"source": "ceiling_camera", "format": "jpeg", "data": "<base64>"}``
+    Response 503: ``{"error": "no image available yet"}``
+
+GET /robots/ceiling/camera/stream
+    MJPEG live stream of the bedroom ceiling camera.
+    Content-Type: ``multipart/x-mixed-replace; boundary=frame``
+
+POST /simulation/pause
+    Pause the simulation (applied on the next supervisor step).
+    Response 200: ``{"ok": true}``
+
+POST /simulation/resume
+    Resume a paused simulation (applied on the next supervisor step).
+    Response 200: ``{"ok": true}``
+
+GET /simulation/time
+    Current simulated time.
+    Response 200: ``{"time": <float>}``  (seconds since simulation start)
 
 Coordinate note: the world uses X/Y as the horizontal plane (Z is up).
 The API "z" parameter in /goto maps to the world Y axis, matching the
@@ -327,11 +405,40 @@ def _robot_public_state(rid):
 
 @app.get("/robots")
 def get_robots():
+    """Return the state of all robots.
+
+    GET /robots
+
+    Response 200 – JSON array of robot state objects, one per robot in the
+    scene.  Each element has the same structure as ``GET /robots/{id}``.
+    """
     return jsonify([_robot_public_state(rid) for rid in ROBOT_DEFS])
 
 
 @app.get("/robots/<rid>")
 def get_robot(rid):
+    """Return the full state of a single robot.
+
+    GET /robots/{id}
+
+    Path parameter:
+        id – Robot identifier: "ROBOT_1", "ROBOT_2", or numeric aliases "1" / "2".
+
+    Response 200::
+
+        {
+          "id":          "ROBOT_1",
+          "position":    {"x": 0.0, "y": 0.0, "z": 0.0},
+          "rotation":    {"ax": 0.0, "ay": 0.0, "az": 1.0, "angle": 0.0},
+          "speed_left":  0.0,
+          "speed_right": 0.0,
+          "status":      "idle" | "moving" | "navigating" | "stopped",
+          "goto_target": {"x": 1.0, "z": 0.5} | null,
+          "sensors":     { <sensor_key>: <value>, ... }
+        }
+
+    Response 404: ``{"error": "robot not found"}``
+    """
     rid = _resolve_rid(rid)
     if rid not in ROBOT_DEFS:
         return jsonify({"error": "robot not found"}), 404
@@ -340,6 +447,23 @@ def get_robot(rid):
 
 @app.post("/robots/<rid>/move")
 def move_robot(rid):
+    """Set the wheel speeds for direct manual driving.
+
+    POST /robots/{id}/move
+
+    Path parameter:
+        id – Robot identifier ("ROBOT_1", "ROBOT_2", "1", "2").
+
+    Request body (JSON)::
+
+        {"speed_left": <float>, "speed_right": <float>}
+
+    Both values are clamped to ±MAX_SPEED (16.0 rad/s).  Cancels any active
+    ``goto`` target and sets the robot status to ``"moving"``.
+
+    Response 200: ``{"ok": true}``
+    Response 404: ``{"error": "robot not found"}``
+    """
     rid = _resolve_rid(rid)
     if rid not in ROBOT_DEFS:
         return jsonify({"error": "robot not found"}), 404
@@ -356,7 +480,27 @@ def move_robot(rid):
 
 @app.post("/robots/<rid>/goto")
 def goto_robot(rid):
-    """Navigate autonomously to {x, z} where z maps to world Y axis."""
+    """Navigate autonomously to a world position.
+
+    POST /robots/{id}/goto
+
+    Path parameter:
+        id – Robot identifier.
+
+    Request body (JSON)::
+
+        {"x": <float>, "z": <float>}
+
+    ``x`` and ``z`` are world coordinates.  Note: the API ``z`` field maps to
+    the **world Y axis** (Webots VRML convention where X/Y are the horizontal
+    plane).  The supervisor steers the robot with a proportional controller
+    until it reaches the target (within ``GOTO_ARRIVAL_DIST`` metres), then
+    sets status back to ``"idle"``.
+
+    Response 200: ``{"ok": true, "target": {"x": <float>, "z": <float>}}``
+    Response 400: ``{"error": "body must contain numeric x and z"}``
+    Response 404: ``{"error": "robot not found"}``
+    """
     rid = _resolve_rid(rid)
     if rid not in ROBOT_DEFS:
         return jsonify({"error": "robot not found"}), 404
@@ -374,6 +518,16 @@ def goto_robot(rid):
 
 @app.post("/robots/<rid>/stop")
 def stop_robot(rid):
+    """Immediately halt the robot and cancel any active goto target.
+
+    POST /robots/{id}/stop
+
+    Zeroes both wheel speeds, clears the ``goto_target``, and sets the robot
+    status to ``"stopped"``.
+
+    Response 200: ``{"ok": true}``
+    Response 404: ``{"error": "robot not found"}``
+    """
     rid = _resolve_rid(rid)
     if rid not in ROBOT_DEFS:
         return jsonify({"error": "robot not found"}), 404
@@ -387,6 +541,22 @@ def stop_robot(rid):
 
 @app.get("/robots/<rid>/sensors")
 def robot_sensors(rid):
+    """Return raw sensor data published by the robot controller.
+
+    GET /robots/{id}/sensors
+
+    The sensor document is written by the robot controller to
+    ``/tmp/webots_{id}_state.json`` every step and typically contains
+    distance-sensor readings, wheel encoder values and IMU data.
+
+    Response 200::
+
+        {"robot_id": "ROBOT_1", "sensors": { <sensor_key>: <value>, ... }}
+
+    Response 503: ``{"error": "no sensor data available yet"}`` – the
+    controller has not yet written its first snapshot.
+    Response 404: ``{"error": "robot not found"}``
+    """
     rid = _resolve_rid(rid)
     if rid not in ROBOT_DEFS:
         return jsonify({"error": "robot not found"}), 404
@@ -405,6 +575,21 @@ def robot_sensors(rid):
 
 @app.get("/robots/<rid>/camera")
 def robot_camera(rid):
+    """Return the latest camera frame as a base64-encoded JPEG snapshot.
+
+    GET /robots/{id}/camera
+
+    The frame is read from the shared-memory ring buffer (``webots_{id}_camera_shm``)
+    written by the robot controller.  Falls back to the JPEG file at
+    ``/tmp/webots_{id}_camera.jpg`` if shared memory is not yet ready.
+
+    Response 200::
+
+        {"robot_id": "ROBOT_1", "format": "jpeg", "data": "<base64-string>"}
+
+    Response 503: ``{"error": "no image available yet"}`` – no frame published yet.
+    Response 404: ``{"error": "robot not found"}``
+    """
     rid = _resolve_rid(rid)
     if rid not in ROBOT_DEFS:
         return jsonify({"error": "robot not found"}), 404
@@ -425,7 +610,18 @@ def robot_camera(rid):
 
 @app.get("/robots/<rid>/camera/stream")
 def robot_camera_mjpeg(rid):
-    """MJPEG live stream for a robot's front camera."""
+    """Stream the robot camera as a live MJPEG feed.
+
+    GET /robots/{id}/camera/stream
+
+    Blocks efficiently on a per-robot ``threading.Condition``; a new MJPEG
+    part is pushed to the client only when the supervisor main loop publishes
+    a new frame from shared memory (no polling overhead).  Multiple simultaneous
+    clients are each tracked by their own ``last_seq`` counter.
+
+    Content-Type: ``multipart/x-mixed-replace; boundary=frame``
+    Response 404: ``{"error": "robot not found"}``
+    """
     rid = _resolve_rid(rid)
     if rid not in ROBOT_DEFS:
         return jsonify({"error": "robot not found"}), 404
@@ -437,6 +633,19 @@ def robot_camera_mjpeg(rid):
 
 @app.get("/god/camera")
 def god_camera():
+    """Return the latest top-down god-view camera snapshot.
+
+    GET /god/camera
+
+    The supervisor encodes a JPEG from the ``god_camera`` Webots device each
+    simulation step.
+
+    Response 200::
+
+        {"source": "god_camera", "format": "jpeg", "data": "<base64-string>"}
+
+    Response 503: ``{"error": "no image available yet"}``
+    """
     with _god_cam_cond:
         frame = _god_frame
     if not frame:
@@ -447,7 +656,12 @@ def god_camera():
 
 @app.get("/god/camera/stream")
 def god_camera_mjpeg():
-    """MJPEG live stream for the top-down god camera."""
+    """Stream the top-down god-view camera as a live MJPEG feed.
+
+    GET /god/camera/stream
+
+    Content-Type: ``multipart/x-mixed-replace; boundary=frame``
+    """
     return Response(
         _supervisor_camera_stream(
             _god_cam_cond,
@@ -460,6 +674,19 @@ def god_camera_mjpeg():
 
 @app.get("/robots/ceiling/camera")
 def ceiling_camera():
+    """Return the latest bedroom ceiling camera snapshot.
+
+    GET /robots/ceiling/camera
+
+    The supervisor encodes a JPEG from the ``ceiling_camera`` Webots device
+    each simulation step.
+
+    Response 200::
+
+        {"source": "ceiling_camera", "format": "jpeg", "data": "<base64-string>"}
+
+    Response 503: ``{"error": "no image available yet"}``
+    """
     with _ceiling_cam_cond:
         frame = _ceiling_frame
     if not frame:
@@ -470,7 +697,12 @@ def ceiling_camera():
 
 @app.get("/robots/ceiling/camera/stream")
 def ceiling_camera_mjpeg():
-    """MJPEG live stream for the bedroom ceiling camera."""
+    """Stream the bedroom ceiling camera as a live MJPEG feed.
+
+    GET /robots/ceiling/camera/stream
+
+    Content-Type: ``multipart/x-mixed-replace; boundary=frame``
+    """
     return Response(
         _supervisor_camera_stream(
             _ceiling_cam_cond,
@@ -483,6 +715,15 @@ def ceiling_camera_mjpeg():
 
 @app.post("/simulation/pause")
 def sim_pause():
+    """Pause the Webots simulation.
+
+    POST /simulation/pause
+
+    The pause is applied on the next supervisor step (not instantaneously).
+    Has no effect if the simulation is already paused.
+
+    Response 200: ``{"ok": true}``
+    """
     global _pending_pause
     with _lock:
         _pending_pause = True
@@ -491,6 +732,15 @@ def sim_pause():
 
 @app.post("/simulation/resume")
 def sim_resume():
+    """Resume the Webots simulation after a pause.
+
+    POST /simulation/resume
+
+    The resume is applied on the next supervisor step.
+    Has no effect if the simulation is already running.
+
+    Response 200: ``{"ok": true}``
+    """
     global _pending_resume
     with _lock:
         _pending_resume = True
@@ -499,6 +749,14 @@ def sim_resume():
 
 @app.get("/simulation/time")
 def sim_time():
+    """Return the current simulated time.
+
+    GET /simulation/time
+
+    Response 200::
+
+        {"time": <float>}   # seconds since simulation start
+    """
     with _lock:
         t = _sim_time
     return jsonify({"time": t})
