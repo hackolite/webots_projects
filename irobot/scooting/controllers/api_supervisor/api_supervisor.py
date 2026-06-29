@@ -452,13 +452,15 @@ def main():
         if node is None:
             print(f"[api_supervisor] WARNING: DEF '{rid}' not found")
 
+    # Create shared-memory blocks as early as possible so robot controllers
+    # can attach to them during their own start-up (before the first step).
+    _setup_camera_shm()
+
     god_cam = supervisor.getDevice("god_camera")
     if god_cam:
         god_cam.enable(timestep)
     else:
         print("[api_supervisor] WARNING: god_camera device not found")
-
-    _setup_camera_shm()
 
     flask_thread = threading.Thread(target=_run_flask, daemon=True)
     flask_thread.start()

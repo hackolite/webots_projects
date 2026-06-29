@@ -33,6 +33,10 @@ except ImportError:  # pragma: no cover - resolved via requirements.txt in Webot
 _SHM_HEADER = 8           # [seq: uint32 LE][length: uint32 LE]
 _TMP = tempfile.gettempdir()
 
+# Number of 0.1 s retries when attaching to the supervisor-created shm block.
+# Must cover the supervisor's full start-up time (node lookup, camera enable, …).
+_SHM_ATTACH_RETRIES = 100   # ~10 s
+
 
 class CameraPublisher:
     """Publish JPEG camera frames over shared memory (or a file fallback)."""
@@ -44,7 +48,7 @@ class CameraPublisher:
         self._shm = None
         if SharedMemory is not None:
             shm_name = f"webots_{robot_name}_camera_shm"
-            for _ in range(20):           # retry ~2 s for start-up ordering
+            for _ in range(_SHM_ATTACH_RETRIES):
                 try:
                     self._shm = SharedMemory(name=shm_name, create=False)
                     break
