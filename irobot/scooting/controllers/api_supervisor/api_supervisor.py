@@ -12,15 +12,13 @@ Controllable (REST move/stop/start + obstacle avoidance toggle):
     CREATE            – iRobot Create (differential drive)
 Camera + sensors only (read-only):
     BLIMP             – LIS Blimp (flying)
-    RANGEROVER        – Range Rover Sport SVR (land rover)
 
 Every robot owns an on-board camera.  Because a Supervisor can only read its
-own devices, each robot controller publishes its camera frame either through a
-POSIX shared-memory block (fast, in-memory path used by the Python robots) or a
-JPEG file in the temp dir (fallback path used by the C Range Rover controller).
-The supervisor consumes those frames and re-serves them as base64 snapshots and
-MJPEG live streams.  A top-down ``god_camera`` owned by the supervisor itself
-gives a full map overview.
+own devices, each robot controller publishes its camera frame through a POSIX
+shared-memory block (fast, in-memory path).  The supervisor consumes those
+frames and re-serves them as base64 snapshots and MJPEG live streams.  A
+top-down ``god_camera`` owned by the supervisor itself gives a full map
+overview.
 
 Obstacle avoidance protocol (controllable robots, via ``customData``)
 ────────────────────────────────────────────────────────────────────
@@ -90,19 +88,16 @@ JPEG_QUALITY = 75
 # Controllable robots: DEF name → canonical id (kept identical for clarity).
 CONTROLLABLE = ("TIAGO_1", "TIAGO_2", "CREATE")
 
-# All robots that expose an on-board camera, with the IPC transport used by
-# their controller: "shm" (shared memory, Python controllers) or "file"
-# (JPEG file written by the C Range Rover controller).
+# All robots that expose an on-board camera (shared-memory IPC transport).
 CAMERA_ROBOTS = {
     "TIAGO_1": "shm",
     "TIAGO_2": "shm",
     "CREATE": "shm",
     "BLIMP": "shm",
-    "RANGEROVER": "file",
 }
 
 # Every robot whose pose the supervisor tracks (DEF name in the .wbt file).
-ROBOT_DEFS = ("TIAGO_1", "TIAGO_2", "CREATE", "BLIMP", "RANGEROVER")
+ROBOT_DEFS = ("TIAGO_1", "TIAGO_2", "CREATE", "BLIMP")
 
 # ── Shared-memory layout for robot cameras ────────────────────────────────────
 # Header: [seq: uint32 LE][length: uint32 LE] followed by the JPEG payload.
@@ -143,7 +138,11 @@ _robot_frame_seq = {rid: 0 for rid in CAMERA_ROBOTS}
 # Per-robot IPC bookkeeping (populated in main()).
 _robot_shm = {}                                       # rid → SharedMemory | None
 _robot_shm_last_seq = {rid: 0 for rid in CAMERA_ROBOTS}
-_robot_file_mtime = {rid: 0.0 for rid in CAMERA_ROBOTS}
+
+# DEF names that were successfully resolved at start-up (populated in main()).
+# Used by Flask endpoints to return 503 immediately instead of hanging when a
+# robot's node is absent from the scene.
+_nodes_found: set = set()
 
 
 # ── JPEG encoding helper (god camera) ────────────────────────────────────────
@@ -164,20 +163,27 @@ def _encode_jpeg(camera, quality=JPEG_QUALITY):
 # ── MJPEG streaming generators ───────────────────────────────────────────────
 
 def _camera_stream(cond, get_frame, get_seq):
-    """Yield MJPEG chunks, blocking on *cond* until a new frame is published."""
+    """Yield MJPEG chunks, blocking on *cond* until a new frame is published.
+
+    Each yield returns one complete MJPEG part (boundary + headers + JPEG body).
+    Handles client disconnects cleanly via ``GeneratorExit``.
+    """
     last_seq = -1
     while True:
-        with cond:
-            cond.wait_for(lambda: get_seq() != last_seq, timeout=1.0)
-            seq = get_seq()
-            frame = get_frame()
-        if seq != last_seq:
-            last_seq = seq
-            if frame:
-                yield (
-                    b"--frame\r\n"
-                    b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n"
-                )
+        try:
+            with cond:
+                cond.wait_for(lambda: get_seq() != last_seq, timeout=1.0)
+                seq = get_seq()
+                frame = get_frame()
+            if seq != last_seq:
+                last_seq = seq
+                if frame:
+                    yield (
+                        b"--frame\r\n"
+                        b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n"
+                    )
+        except GeneratorExit:
+            return
 
 
 # ── Flask application ─────────────────────────────────────────────────────────
@@ -303,6 +309,8 @@ def robot_camera(rid):
     rid = _resolve_rid(rid)
     if rid not in CAMERA_ROBOTS:
         return jsonify({"error": "no camera for this robot"}), 404
+    if rid not in _nodes_found:
+        return jsonify({"error": "robot not active in simulation"}), 503
     with _robot_cam_cond[rid]:
         frame = _robot_frames[rid]
     if not frame:
@@ -316,6 +324,8 @@ def robot_camera_mjpeg(rid):
     rid = _resolve_rid(rid)
     if rid not in CAMERA_ROBOTS:
         return jsonify({"error": "no camera for this robot"}), 404
+    if rid not in _nodes_found:
+        return jsonify({"error": "robot not active in simulation"}), 503
     cond = _robot_cam_cond[rid]
     return Response(
         _camera_stream(
@@ -324,11 +334,14 @@ def robot_camera_mjpeg(rid):
             lambda r=rid: _robot_frame_seq[r],
         ),
         mimetype="multipart/x-mixed-replace; boundary=frame",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
 
 @app.get("/god/camera")
 def god_camera():
+    if Image is None:
+        return jsonify({"error": "Pillow not installed; god camera unavailable"}), 503
     with _god_cam_cond:
         frame = _god_frame
     if not frame:
@@ -339,9 +352,12 @@ def god_camera():
 
 @app.get("/god/camera/stream")
 def god_camera_mjpeg():
+    if Image is None:
+        return jsonify({"error": "Pillow not installed; god camera unavailable"}), 503
     return Response(
         _camera_stream(_god_cam_cond, lambda: _god_frame, lambda: _god_frame_seq),
         mimetype="multipart/x-mixed-replace; boundary=frame",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
 
@@ -369,19 +385,16 @@ def sim_time():
 
 
 def _run_flask():
-    app.run(host="0.0.0.0", port=API_PORT, debug=False, use_reloader=False)
+    app.run(host="0.0.0.0", port=API_PORT, debug=False, use_reloader=False, threaded=True)
 
 
 # ── Shared-memory setup ───────────────────────────────────────────────────────
 
 def _setup_camera_shm():
-    """Create one shared-memory block per shm-based camera robot."""
+    """Create one shared-memory block per camera robot."""
     from multiprocessing.shared_memory import SharedMemory
 
-    for rid, ipc in CAMERA_ROBOTS.items():
-        if ipc != "shm":
-            _robot_shm[rid] = None
-            continue
+    for rid in CAMERA_ROBOTS:
         shm_name = f"webots_{rid}_camera_shm"
         shm = None
         try:
@@ -402,40 +415,24 @@ def _setup_camera_shm():
 
 
 def _pull_camera_frames():
-    """Pull new camera frames from shared memory / files into memory buffers."""
-    for rid, ipc in CAMERA_ROBOTS.items():
-        if ipc == "shm":
-            shm = _robot_shm.get(rid)
-            if shm is None:
-                continue
-            try:
-                seq = struct.unpack_from("<I", shm.buf, 0)[0]
-                if seq != _robot_shm_last_seq[rid]:
-                    length = struct.unpack_from("<I", shm.buf, 4)[0]
-                    if 0 < length <= _SHM_SIZE - _SHM_HEADER:
-                        frame = bytes(shm.buf[_SHM_HEADER:_SHM_HEADER + length])
-                        _robot_shm_last_seq[rid] = seq
-                        with _robot_cam_cond[rid]:
-                            _robot_frames[rid] = frame
-                            _robot_frame_seq[rid] += 1
-                            _robot_cam_cond[rid].notify_all()
-            except Exception as exc:  # pragma: no cover
-                print(f"[api_supervisor] shm read error for {rid}: {exc}")
-        else:  # file-based transport (Range Rover)
-            path = os.path.join(_tmp, f"webots_{rid}_camera.jpg")
-            try:
-                mtime = os.path.getmtime(path)
-                if mtime != _robot_file_mtime[rid]:
-                    _robot_file_mtime[rid] = mtime
-                    with open(path, "rb") as fh:
-                        frame = fh.read()
-                    if frame:
-                        with _robot_cam_cond[rid]:
-                            _robot_frames[rid] = frame
-                            _robot_frame_seq[rid] += 1
-                            _robot_cam_cond[rid].notify_all()
-            except OSError:
-                pass
+    """Pull new camera frames from shared memory into the in-memory buffers."""
+    for rid in CAMERA_ROBOTS:
+        shm = _robot_shm.get(rid)
+        if shm is None:
+            continue
+        try:
+            seq = struct.unpack_from("<I", shm.buf, 0)[0]
+            if seq != _robot_shm_last_seq[rid]:
+                length = struct.unpack_from("<I", shm.buf, 4)[0]
+                if 0 < length <= _SHM_SIZE - _SHM_HEADER:
+                    frame = bytes(shm.buf[_SHM_HEADER:_SHM_HEADER + length])
+                    _robot_shm_last_seq[rid] = seq
+                    with _robot_cam_cond[rid]:
+                        _robot_frames[rid] = frame
+                        _robot_frame_seq[rid] += 1
+                        _robot_cam_cond[rid].notify_all()
+        except Exception as exc:  # pragma: no cover
+            print(f"[api_supervisor] shm read error for {rid}: {exc}")
 
 
 # ── Main supervisor loop ──────────────────────────────────────────────────────
@@ -451,6 +448,10 @@ def main():
     for rid, node in nodes.items():
         if node is None:
             print(f"[api_supervisor] WARNING: DEF '{rid}' not found")
+
+    # Record which nodes were actually resolved so Flask endpoints can return
+    # 503 immediately for absent robots rather than hanging indefinitely.
+    _nodes_found.update(rid for rid, node in nodes.items() if node is not None)
 
     # Create shared-memory blocks as early as possible so robot controllers
     # can attach to them during their own start-up (before the first step).
